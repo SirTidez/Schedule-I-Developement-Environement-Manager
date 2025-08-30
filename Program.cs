@@ -46,23 +46,44 @@ namespace ScheduleIDevelopementEnvironementManager
                 // Try to load configuration
                 var config = configService.LoadConfigurationAsync().GetAwaiter().GetResult();
                 
+                logger.LogInformation("Config loaded. ManagedEnvironmentPath: '{Path}', GameInstallPath: '{GamePath}', SelectedBranches: {Count}",
+                    config?.ManagedEnvironmentPath ?? "null", 
+                    config?.GameInstallPath ?? "null", 
+                    config?.SelectedBranches?.Count ?? 0);
+                
                 if (config != null && IsManagedEnvironmentConfigured(config))
                 {
                     // Managed environment exists, show the managed environment loaded form as main screen
                     logger.LogInformation("Managed environment configuration found, showing ManagedEnvironmentLoadedForm as main screen");
-                    return new ManagedEnvironmentLoadedForm(config);
+                    
+                    try
+                    {
+                        var managedForm = new ManagedEnvironmentLoadedForm(config);
+                        logger.LogInformation("ManagedEnvironmentLoadedForm created successfully");
+                        return managedForm;
+                    }
+                    catch (Exception formEx)
+                    {
+                        logger.LogError(formEx, "Error creating ManagedEnvironmentLoadedForm, falling back to MainForm");
+                        return new MainForm();
+                    }
                 }
                 else
                 {
                     // No managed environment, show the main form for setup
                     logger.LogInformation("No managed environment configuration found, showing MainForm for setup");
+                    if (config != null)
+                    {
+                        logger.LogInformation("Configuration validation failed. ManagedEnvironmentConfigured: {Configured}", 
+                            IsManagedEnvironmentConfigured(config));
+                    }
                     return new MainForm();
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // If there's any error checking configuration, fall back to main form
-                // Note: We can't log here since the logging service might not be available
+                // Note: We can't easily log here since logger might be out of scope
                 return new MainForm();
             }
         }
@@ -70,9 +91,12 @@ namespace ScheduleIDevelopementEnvironementManager
         private static bool IsManagedEnvironmentConfigured(DevEnvironmentConfig config)
         {
             // Check if we have the essential paths and at least one branch selected
-            return !string.IsNullOrEmpty(config.ManagedEnvironmentPath) && 
-                   !string.IsNullOrEmpty(config.GameInstallPath) &&
-                   config.SelectedBranches.Count > 0;
+            var hasManagedPath = !string.IsNullOrEmpty(config.ManagedEnvironmentPath);
+            var hasGamePath = !string.IsNullOrEmpty(config.GameInstallPath);
+            var hasBranches = config.SelectedBranches.Count > 0;
+            
+            // We can't log here easily without setting up logging again, but we can check each condition
+            return hasManagedPath && hasGamePath && hasBranches;
         }
     }
 }

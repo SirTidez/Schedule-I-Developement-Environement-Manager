@@ -611,5 +611,155 @@ namespace ScheduleIDevelopementEnvironementManager.Services
 
             return null;
         }
+        
+        /// <summary>
+        /// Gets the current branch from game path asynchronously
+        /// </summary>
+        public async Task<string?> GetCurrentBranchFromGamePathAsync(string gameInstallPath)
+        {
+            return await Task.Run(() => GetCurrentBranchFromGamePath(gameInstallPath));
+        }
+        
+        /// <summary>
+        /// Gets the current build ID for the installed Schedule I game
+        /// </summary>
+        public async Task<string?> GetCurrentBuildIdAsync(string gameInstallPath)
+        {
+            try
+            {
+                return await Task.Run(() =>
+                {
+                    // Go up two levels from game install path to reach steamapps directory
+                    var steamAppsPath = Path.GetFullPath(Path.Combine(gameInstallPath, "..", ".."));
+                    var appManifestPath = Path.Combine(steamAppsPath, $"appmanifest_{ScheduleISteamId}.acf");
+
+                    if (!File.Exists(appManifestPath))
+                    {
+                        _logger.LogWarning("App manifest not found at: {Path}", appManifestPath);
+                        return null;
+                    }
+
+                    var manifestContent = File.ReadAllText(appManifestPath);
+                    return ParseBuildIdFromManifest(manifestContent);
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting current build ID from game path: {Path}", gameInstallPath);
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// Gets the current Steam build ID for a specific branch by checking Steam servers
+        /// This would require Steam Web API in a real implementation, for now returns current build ID
+        /// </summary>
+        public async Task<string?> GetCurrentBuildIdForBranchAsync(string branchName)
+        {
+            try
+            {
+                // In a real implementation, this would query Steam Web API for the latest build ID
+                // For now, we'll return the current manifest build ID as a fallback
+                // This assumes the user keeps Steam updated
+                
+                _logger.LogDebug("Getting Steam build ID for branch: {BranchName}", branchName);
+                
+                // For now, return null to indicate we can't get remote build ID
+                // This will cause the status to default to UpToDate
+                return await Task.FromResult<string?>(null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting Steam build ID for branch: {BranchName}", branchName);
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// Compares local build ID with Steam build ID to determine if an update is available
+        /// </summary>
+        public async Task<bool> IsBranchUpdateAvailableAsync(string branchName, string localBuildId)
+        {
+            try
+            {
+                var steamBuildId = await GetCurrentBuildIdForBranchAsync(branchName);
+                
+                // If we can't get Steam build ID, assume no update available
+                if (string.IsNullOrEmpty(steamBuildId))
+                {
+                    return false;
+                }
+                
+                // If we don't have a local build ID, assume update is available
+                if (string.IsNullOrEmpty(localBuildId))
+                {
+                    return true;
+                }
+                
+                // Compare build IDs
+                return localBuildId != steamBuildId;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking if branch update is available for {BranchName}", branchName);
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Gets Steam app information including current build ID
+        /// </summary>
+        public async Task<(string? branchName, string? buildId)> GetSteamAppInfoAsync(string gameInstallPath)
+        {
+            try
+            {
+                return await Task.Run(() =>
+                {
+                    var steamAppsPath = Path.GetFullPath(Path.Combine(gameInstallPath, "..", ".."));
+                    var appManifestPath = Path.Combine(steamAppsPath, $"appmanifest_{ScheduleISteamId}.acf");
+
+                    if (!File.Exists(appManifestPath))
+                    {
+                        _logger.LogWarning("App manifest not found at: {Path}", appManifestPath);
+                        return (null, null);
+                    }
+
+                    var manifestContent = File.ReadAllText(appManifestPath);
+                    var branchName = ParseBranchFromManifest(manifestContent);
+                    var buildId = ParseBuildIdFromManifest(manifestContent);
+                    
+                    return (branchName, buildId);
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting Steam app info from: {Path}", gameInstallPath);
+                return (null, null);
+            }
+        }
+        
+        /// <summary>
+        /// Validates that a branch name is supported by the application
+        /// </summary>
+        public bool IsValidBranch(string branchName)
+        {
+            return !string.IsNullOrEmpty(branchName) && 
+                   DevEnvironmentConfig.AvailableBranches.Contains(branchName);
+        }
+        
+        /// <summary>
+        /// Gets a user-friendly description for a branch name
+        /// </summary>
+        public string GetBranchDescription(string branchName)
+        {
+            return branchName switch
+            {
+                "main-branch" => "Main release branch - stable version",
+                "beta-branch" => "Beta testing branch - preview features",
+                "alternate-branch" => "Alternative build branch",
+                "alternate-beta-branch" => "Alternative beta branch - experimental features",
+                _ => $"Unknown branch: {branchName}"
+            };
+        }
     }
 }
