@@ -13,6 +13,17 @@
     <AssemblyProduct>Schedule I Development Environment Manager</AssemblyProduct>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>
+    <!-- Single-file publish defaults -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <!-- Set your target runtime: win-x64, win-x86, or win-arm64 -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <!-- WinForms/WPF apps are typically not safe to trim by default -->
+    <PublishTrimmed>false</PublishTrimmed>
+    <!-- Bundle compression to reduce size -->
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <!-- Extract native libs when needed (safer for some dependencies) -->
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
 
   <ItemGroup>

@@ -93,7 +93,7 @@ namespace ScheduleIDevelopementEnvironementManager
             // OK button
             btnOk = new Button
             {
-                Text = "OK - Branch Switched",
+                Text = "OK",
                 Location = new Point(150, 360), // Moved down from 220 to 360
                 Size = new Size(120, 30),
                 DialogResult = DialogResult.OK
