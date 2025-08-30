@@ -59,6 +59,9 @@ namespace ScheduleIDevelopementEnvironementManager
             // Load the application icon
             this.Icon = MainForm.LoadApplicationIcon();
 
+            // Apply dark theme
+            ApplyDarkTheme();
+
             CreateControls();
             SetupEventHandlers();
         }
@@ -95,6 +98,11 @@ namespace ScheduleIDevelopementEnvironementManager
                 Font = new Font("Consolas", 9)
             };
 
+            // Apply dark theme to controls
+            ApplyDarkThemeToControl(lblTitle);
+            ApplyDarkThemeToControl(lblConfigInfo);
+            ApplyDarkThemeToControl(txtConfigInfo);
+
             // Branches List
             var lblBranches = new Label
             {
@@ -123,8 +131,7 @@ namespace ScheduleIDevelopementEnvironementManager
             {
                 Text = "Reconfigure",
                 Location = new Point(320, 560),
-                Size = new Size(120, 35),
-                BackColor = Color.LightBlue
+                Size = new Size(120, 35)
             };
 
             btnExit = new Button
@@ -339,5 +346,69 @@ namespace ScheduleIDevelopementEnvironementManager
         {
             this.Close();
         }
+
+        #region Dark Theme Methods
+
+        /// <summary>
+        /// Applies dark theme to the form
+        /// </summary>
+        private void ApplyDarkTheme()
+        {
+            // Set form background to dark gray
+            this.BackColor = Color.FromArgb(45, 45, 48);
+            this.ForeColor = Color.White;
+        }
+
+        /// <summary>
+        /// Applies dark theme to individual controls
+        /// </summary>
+        /// <param name="control">The control to apply dark theme to</param>
+        private void ApplyDarkThemeToControl(Control? control)
+        {
+            if (control == null) return;
+
+            // Apply dark theme based on control type
+            switch (control)
+            {
+                case Form form:
+                    form.BackColor = Color.FromArgb(45, 45, 48);
+                    form.ForeColor = Color.White;
+                    break;
+
+                case Label label:
+                    label.BackColor = Color.Transparent;
+                    label.ForeColor = Color.White;
+                    break;
+
+                case TextBox textBox:
+                    textBox.BackColor = Color.FromArgb(30, 30, 30);
+                    textBox.ForeColor = Color.White;
+                    textBox.BorderStyle = BorderStyle.FixedSingle;
+                    break;
+
+                case Button button:
+                    button.BackColor = Color.FromArgb(0, 122, 204); // Professional blue
+                    button.ForeColor = Color.White;
+                    button.FlatStyle = FlatStyle.Flat;
+                    button.FlatAppearance.BorderColor = Color.FromArgb(0, 100, 180);
+                    button.FlatAppearance.MouseOverBackColor = Color.FromArgb(0, 140, 230);
+                    button.FlatAppearance.MouseDownBackColor = Color.FromArgb(0, 100, 180);
+                    break;
+
+                case ListBox listBox:
+                    listBox.BackColor = Color.FromArgb(30, 30, 30);
+                    listBox.ForeColor = Color.White;
+                    listBox.BorderStyle = BorderStyle.FixedSingle;
+                    break;
+            }
+
+            // Recursively apply to child controls
+            foreach (Control childControl in control.Controls)
+            {
+                ApplyDarkThemeToControl(childControl);
+            }
+        }
+
+        #endregion
     }
 }

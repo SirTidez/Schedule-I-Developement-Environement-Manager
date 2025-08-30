@@ -67,6 +67,9 @@ namespace ScheduleIDevelopementEnvironementManager
             // Load the application icon
             this.Icon = MainForm.LoadApplicationIcon();
 
+            // Apply dark theme
+            ApplyDarkTheme();
+
             CreateControls();
             SetupEventHandlers();
         }
@@ -93,9 +96,15 @@ namespace ScheduleIDevelopementEnvironementManager
             btnBrowseSteamLibrary = new Button
             {
                 Text = "Browse...",
-                Location = new Point(530, 54),
-                Size = new Size(80, 25)
+                Location = new Point(530, 55), // Aligned with textbox top
+                Size = new Size(80, 23), // Match textbox height for perfect alignment
+                TextAlign = ContentAlignment.MiddleCenter
             };
+
+            // Apply dark theme to controls
+            ApplyDarkThemeToControl(lblSteamLibrary);
+            ApplyDarkThemeToControl(txtSteamLibrary);
+            ApplyDarkThemeToControl(btnBrowseSteamLibrary);
 
             // Game Installation Section
             var lblGameInstall = new Label
@@ -116,9 +125,15 @@ namespace ScheduleIDevelopementEnvironementManager
             btnBrowseGameInstall = new Button
             {
                 Text = "Browse...",
-                Location = new Point(530, 124),
-                Size = new Size(80, 25)
+                Location = new Point(530, 125), // Aligned with textbox top
+                Size = new Size(80, 23), // Match textbox height for perfect alignment
+                TextAlign = ContentAlignment.MiddleCenter
             };
+
+            // Apply dark theme to controls
+            ApplyDarkThemeToControl(lblGameInstall);
+            ApplyDarkThemeToControl(txtGameInstall);
+            ApplyDarkThemeToControl(btnBrowseGameInstall);
 
             // Managed Environment Section
             var lblManagedEnv = new Label
@@ -139,9 +154,15 @@ namespace ScheduleIDevelopementEnvironementManager
             btnBrowseManagedEnv = new Button
             {
                 Text = "Browse...",
-                Location = new Point(530, 194),
-                Size = new Size(80, 25)
+                Location = new Point(530, 195), // Aligned with textbox top
+                Size = new Size(80, 23), // Match textbox height for perfect alignment
+                TextAlign = ContentAlignment.MiddleCenter
             };
+
+            // Apply dark theme to controls
+            ApplyDarkThemeToControl(lblManagedEnv);
+            ApplyDarkThemeToControl(txtManagedEnv);
+            ApplyDarkThemeToControl(btnBrowseManagedEnv);
 
             // Branch Selection Section
             var lblBranches = new Label
@@ -180,6 +201,13 @@ namespace ScheduleIDevelopementEnvironementManager
                 Size = new Size(170, 25)
             };
 
+            // Apply dark theme to controls
+            ApplyDarkThemeToControl(lblBranches);
+            ApplyDarkThemeToControl(chkMainBranch);
+            ApplyDarkThemeToControl(chkBetaBranch);
+            ApplyDarkThemeToControl(chkAlternateBranch);
+            ApplyDarkThemeToControl(chkAlternateBetaBranch);
+
             // Status Label
             lblStatus = new Label
             {
@@ -190,6 +218,9 @@ namespace ScheduleIDevelopementEnvironementManager
                 ForeColor = Color.Blue
             };
 
+            // Apply dark theme to controls
+            ApplyDarkThemeToControl(lblStatus);
+
             // Buttons
             btnCreateEnvironment = new Button
             {
@@ -197,7 +228,6 @@ namespace ScheduleIDevelopementEnvironementManager
                 Location = new Point(200, 360),
                 Size = new Size(200, 45),
                 Font = new Font(this.Font.FontFamily, 12, FontStyle.Bold),
-                BackColor = Color.LightGreen,
                 Enabled = false
             };
 
@@ -207,6 +237,10 @@ namespace ScheduleIDevelopementEnvironementManager
                 Location = new Point(420, 360),
                 Size = new Size(120, 45)
             };
+
+            // Apply dark theme to controls
+            ApplyDarkThemeToControl(btnCreateEnvironment);
+            ApplyDarkThemeToControl(btnCancel);
 
             // Add controls to form
             this.Controls.AddRange(new Control[]
@@ -497,65 +531,102 @@ namespace ScheduleIDevelopementEnvironementManager
 
                 _logger.LogInformation("Starting managed environment creation. Current branch: {CurrentBranch}", currentBranch);
 
-                // Process each selected branch
-                for (int i = 0; i < _config.SelectedBranches.Count; i++)
-                {
-                    var targetBranch = _config.SelectedBranches[i];
-                    
-                    // Skip if this branch is already the current one
-                    if (targetBranch == currentBranch)
-                    {
-                        _logger.LogInformation("Skipping {Branch} - already current branch", targetBranch);
-                        continue;
-                    }
+                // Show warning popup before first copy operation
+                var warningResult = MessageBox.Show(
+                    "IMPORTANT NOTICE:\n\n" +
+                    "The application may appear to freeze or become unresponsive during the directory creation phase of the copy operation. " +
+                    "This is normal behavior due to the large size of the game files.\n\n" +
+                    "Please be patient and DO NOT close the application during this process. " +
+                    "The copy progress window will show detailed progress once the initial setup is complete.\n\n" +
+                    "Do you want to continue with the managed environment creation?",
+                    "Large File Copy Warning",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning);
 
-                    // Show progress form for this branch
-                    using var progressForm = new CopyProgressForm();
-                    progressForm.Show();
+                if (warningResult == DialogResult.No)
+                {
+                    _logger.LogInformation("User cancelled managed environment creation after warning");
+                    return;
+                }
+
+                // First, copy the current branch (what the user already has installed)
+                if (_config.SelectedBranches.Contains(currentBranch))
+                {
+                    _logger.LogInformation("Copying current branch first: {CurrentBranch}", currentBranch);
+                    
+                    using var currentBranchProgressForm = new CopyProgressForm();
+                    currentBranchProgressForm.Show();
                     
                     try
                     {
-                        // Copy current game state to target branch folder
-                        await CopyGameToBranchAsync(targetBranch, progressForm);
-                        
-                        // Close progress form
-                        progressForm.SetCopyComplete();
-                        progressForm.Close();
-                        
-                        // If this isn't the last branch, prompt user to switch
-                        if (i < _config.SelectedBranches.Count - 1)
-                        {
-                            var nextBranch = _config.SelectedBranches[i + 1];
-                            
-                            // Show branch switch prompt
-                            using var switchPrompt = new BranchSwitchPromptForm(currentBranch, nextBranch);
-                            var result = switchPrompt.ShowDialog();
-                            
-                            if (result == DialogResult.Cancel)
-                            {
-                                _logger.LogInformation("User cancelled branch switch operation");
-                                break;
-                            }
-                            
-                            // Wait for user to actually switch the branch
-                            var switchSuccess = await _steamService.WaitForBranchSwitchAsync(nextBranch, _config.GameInstallPath);
-                            
-                            if (!switchSuccess)
-                            {
-                                throw new Exception($"Failed to detect branch switch to {nextBranch} within timeout period");
-                            }
-                            
-                            // Update current branch for next iteration
-                            currentBranch = nextBranch;
-                            _logger.LogInformation("Successfully switched to branch: {Branch}", currentBranch);
-                        }
+                        await CopyGameToBranchAsync(currentBranch, currentBranchProgressForm);
+                        currentBranchProgressForm.SetCopyComplete();
+                    }
+                    finally
+                    {
+                        currentBranchProgressForm.Close();
+                        currentBranchProgressForm.Dispose();
+                    }
+                    
+                    _logger.LogInformation("Completed copying current branch: {Branch}", currentBranch);
+                }
+
+                // Now process other selected branches (excluding the current one)
+                var otherBranches = _config.SelectedBranches.Where(branch => branch != currentBranch).ToList();
+                
+                if (otherBranches.Count == 0)
+                {
+                    _logger.LogInformation("No additional branches selected, finished after copying current branch");
+                    return;
+                }
+
+                // Process each other branch
+                for (int i = 0; i < otherBranches.Count; i++)
+                {
+                    var targetBranch = otherBranches[i];
+                    _logger.LogInformation("Processing branch {Index}/{Total}: {Branch}", i + 1, otherBranches.Count, targetBranch);
+
+                    // Show branch switch prompt BEFORE copying the branch
+                    using var switchPrompt = new BranchSwitchPromptForm(currentBranch, targetBranch);
+                    var result = switchPrompt.ShowDialog();
+                    if (result == DialogResult.Cancel)
+                    {
+                        _logger.LogInformation("User cancelled branch switch operation");
+                        break;
+                    }
+
+                    // Wait for user to actually switch the branch
+                    var switchSuccess = await _steamService.WaitForBranchSwitchAsync(targetBranch, _config.GameInstallPath);
+                    if (!switchSuccess)
+                    {
+                        throw new Exception($"Failed to detect branch switch to {targetBranch} within timeout period");
+                    }
+
+                    // Update current branch for next iteration
+                    currentBranch = targetBranch;
+                    _logger.LogInformation("Successfully switched to branch: {Branch}", currentBranch);
+
+                    // Now copy the branch after switching to it
+                    using var branchProgressForm = new CopyProgressForm();
+                    branchProgressForm.Show();
+
+                    try
+                    {
+                        await CopyGameToBranchAsync(targetBranch, branchProgressForm);
+                        branchProgressForm.SetCopyComplete();
                     }
                     catch (Exception ex)
                     {
-                        progressForm.SetCopyFailed(ex.Message);
-                        progressForm.Close();
+                        branchProgressForm.SetCopyFailed(ex.Message);
                         throw;
                     }
+                    finally
+                    {
+                        branchProgressForm.Close();
+                        branchProgressForm.Dispose();
+                    }
+
+                    _logger.LogInformation("Completed copying branch: {Branch}", targetBranch);
                 }
 
                 _logger.LogInformation("Managed environment created successfully at: {Path}", _config.ManagedEnvironmentPath);
@@ -636,5 +707,85 @@ namespace ScheduleIDevelopementEnvironementManager
             this.DialogResult = DialogResult.Cancel;
             this.Close();
         }
+
+        #region Dark Theme Methods
+
+        /// <summary>
+        /// Applies dark theme to the form
+        /// </summary>
+        private void ApplyDarkTheme()
+        {
+            // Set form background to dark gray
+            this.BackColor = Color.FromArgb(45, 45, 48);
+            this.ForeColor = Color.White;
+        }
+
+        /// <summary>
+        /// Applies dark theme to individual controls
+        /// </summary>
+        /// <param name="control">The control to apply dark theme to</param>
+        private void ApplyDarkThemeToControl(Control? control)
+        {
+            if (control == null) return;
+
+            // Apply dark theme based on control type
+            switch (control)
+            {
+                case Form form:
+                    form.BackColor = Color.FromArgb(45, 45, 48);
+                    form.ForeColor = Color.White;
+                    break;
+
+                case Label label:
+                    label.BackColor = Color.Transparent;
+                    label.ForeColor = Color.White;
+                    break;
+
+                case TextBox textBox:
+                    textBox.BackColor = Color.FromArgb(30, 30, 30);
+                    textBox.ForeColor = Color.White;
+                    textBox.BorderStyle = BorderStyle.FixedSingle;
+                    break;
+
+                case Button button:
+                    button.BackColor = Color.FromArgb(0, 122, 204); // Professional blue
+                    button.ForeColor = Color.White;
+                    button.FlatStyle = FlatStyle.Flat;
+                    button.FlatAppearance.BorderColor = Color.FromArgb(0, 100, 180);
+                    button.FlatAppearance.MouseOverBackColor = Color.FromArgb(0, 140, 230);
+                    button.FlatAppearance.MouseDownBackColor = Color.FromArgb(0, 100, 180);
+                    break;
+
+                case ComboBox comboBox:
+                    comboBox.BackColor = Color.FromArgb(30, 30, 30);
+                    comboBox.ForeColor = Color.White;
+                    comboBox.FlatStyle = FlatStyle.Flat;
+                    break;
+
+                case CheckBox checkBox:
+                    checkBox.BackColor = Color.Transparent;
+                    checkBox.ForeColor = Color.White;
+                    break;
+
+                case ProgressBar progressBar:
+                    progressBar.BackColor = Color.FromArgb(30, 30, 30);
+                    progressBar.ForeColor = Color.FromArgb(0, 122, 204);
+                    break;
+
+                case RichTextBox richTextBox:
+                    richTextBox.BackColor = Color.FromArgb(30, 30, 30);
+                    richTextBox.ForeColor = Color.White;
+                    richTextBox.BorderStyle = BorderStyle.FixedSingle;
+                    break;
+            }
+
+            // Recursively apply to child controls
+            foreach (Control childControl in control.Controls)
+            {
+                ApplyDarkThemeToControl(childControl);
+            }
+        }
+
+        #endregion
     }
 }

@@ -40,75 +40,13 @@ namespace ScheduleIDevelopementEnvironementManager
             _availableGames = new List<SteamGameInfo>();
             
             InitializeForm();
-            CheckManagedEnvironmentConfiguration();
+            // Since Program.cs now handles configuration checking, MainForm is only shown when setup is needed
+            ShowSetupUI();
         }
 
-        private async void CheckManagedEnvironmentConfiguration()
-        {
-            try
-            {
-                _logger.LogInformation("Checking for managed environment configuration...");
-                
-                var loadedConfig = await _configService.LoadConfigurationAsync();
-                if (loadedConfig != null && IsManagedEnvironmentConfigured(loadedConfig))
-                {
-                    // Managed environment exists, show the managed environment loaded form
-                    _config = loadedConfig;
-                    _logger.LogInformation("Managed environment configuration found, showing managed environment loaded form");
-                    ShowManagedEnvironmentLoadedForm();
-                }
-                else
-                {
-                    // No managed environment, show setup UI
-                    _logger.LogInformation("No managed environment configuration found, showing setup UI");
-                    ShowSetupUI();
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking managed environment configuration");
-                ShowSetupUI();
-            }
-        }
 
-        private bool IsManagedEnvironmentConfigured(DevEnvironmentConfig config)
-        {
-            // Check if we have the essential paths and at least one branch selected
-            return !string.IsNullOrEmpty(config.ManagedEnvironmentPath) && 
-                   !string.IsNullOrEmpty(config.GameInstallPath) &&
-                   config.SelectedBranches.Count > 0;
-        }
 
-        private void ShowManagedEnvironmentLoadedForm()
-        {
-            try
-            {
-                _logger.LogInformation("Showing managed environment loaded form");
-                
-                // Create and show the managed environment loaded form
-                using var managedEnvForm = new ManagedEnvironmentLoadedForm(_config);
-                var result = managedEnvForm.ShowDialog();
-                
-                // After the form closes, check if we need to show setup UI
-                if (result == DialogResult.Cancel || result == DialogResult.Abort)
-                {
-                    // User cancelled or closed the form, show setup UI
-                    ShowSetupUI();
-                }
-                else
-                {
-                    // Form closed normally, exit the application
-                    this.Close();
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error showing managed environment loaded form");
-                MessageBox.Show($"Error showing managed environment loaded form: {ex.Message}", "Error", 
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-                ShowSetupUI();
-            }
-        }
+
 
         private void ShowCreateManagedEnvironmentForm()
         {
@@ -122,44 +60,15 @@ namespace ScheduleIDevelopementEnvironementManager
                 
                 if (result == DialogResult.OK)
                 {
-                    // Environment was created successfully, reload configuration and show managed environment loaded form
-                    _logger.LogInformation("Managed environment created successfully, reloading configuration");
+                    // Environment was created successfully, show success message and close
+                    _logger.LogInformation("Managed environment created successfully, application will restart");
                     
-                    // Reload configuration to get the newly created environment
-                    _ = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            var newConfig = await _configService.LoadConfigurationAsync();
-                            if (newConfig != null && IsManagedEnvironmentConfigured(newConfig))
-                            {
-                                _config = newConfig;
-                                this.Invoke(() =>
-                                {
-                                    ShowManagedEnvironmentLoadedForm();
-                                });
-                            }
-                            else
-                            {
-                                this.Invoke(() =>
-                                {
-                                    MessageBox.Show("Environment was created but configuration could not be loaded. Please restart the application.", 
-                                        "Configuration Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                                    ShowSetupUI();
-                                });
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Error reloading configuration after environment creation");
-                            this.Invoke(() =>
-                            {
-                                MessageBox.Show($"Error reloading configuration: {ex.Message}. Please restart the application.", 
-                                    "Configuration Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                                ShowSetupUI();
-                            });
-                        }
-                    });
+                    // Show success message
+                    MessageBox.Show("Environment created successfully!\n\nThe application will now close. Please restart it to open your managed environment.", 
+                        "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    
+                    // Close this form and let the application restart to load the managed environment
+                    this.Close();
                 }
                 else
                 {
@@ -186,6 +95,9 @@ namespace ScheduleIDevelopementEnvironementManager
             this.StartPosition = FormStartPosition.CenterScreen;
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
+
+            // Apply dark theme to the form
+            ApplyDarkTheme();
 
             CreateSetupControls();
             SetupSetupEventHandlers();
@@ -220,8 +132,7 @@ namespace ScheduleIDevelopementEnvironementManager
                 Text = "Setup Environment",
                 Location = new Point(150, 180),
                 Size = new Size(150, 40),
-                Font = new Font(this.Font.FontFamily, 12, FontStyle.Bold),
-                BackColor = Color.LightGreen
+                Font = new Font(this.Font.FontFamily, 12, FontStyle.Bold)
             };
 
             // Load Configuration Button
@@ -230,8 +141,7 @@ namespace ScheduleIDevelopementEnvironementManager
                 Text = "Load Configuration",
                 Location = new Point(320, 180),
                 Size = new Size(150, 40),
-                Font = new Font(this.Font.FontFamily, 12, FontStyle.Bold),
-                BackColor = Color.LightBlue
+                Font = new Font(this.Font.FontFamily, 12, FontStyle.Bold)
             };
 
             // Exit Button
@@ -241,6 +151,13 @@ namespace ScheduleIDevelopementEnvironementManager
                 Location = new Point(250, 250),
                 Size = new Size(100, 35)
             };
+
+            // Apply dark theme to all controls
+            ApplyDarkThemeToControl(lblTitle);
+            ApplyDarkThemeToControl(lblDescription);
+            ApplyDarkThemeToControl(btnCreateEnvironment);
+            ApplyDarkThemeToControl(btnLoadConfig);
+            ApplyDarkThemeToControl(btnExit);
 
             // Add controls to form
             this.Controls.AddRange(new Control[]
@@ -282,7 +199,7 @@ namespace ScheduleIDevelopementEnvironementManager
         }
 
         // Static helper method to load the application icon
-        public static Icon LoadApplicationIcon()
+        public static Icon? LoadApplicationIcon()
         {
             try
             {
@@ -333,6 +250,9 @@ namespace ScheduleIDevelopementEnvironementManager
             
             // Load the icon using the helper method
             this.Icon = LoadApplicationIcon();
+
+            // Apply dark theme
+            ApplyDarkTheme();
 
             CreateControls();
             SetupEventHandlers();
@@ -413,7 +333,7 @@ namespace ScheduleIDevelopementEnvironementManager
 
             txtSteamLibrary = new TextBox
             {
-                Location = new Point(20, 50), // Moved down from 45 to 50 for better spacing
+                Location = new Point(20, 48), // Reduced gap from label (20+25+3=48)
                 Size = new Size(500, 23),
                 ReadOnly = true,
                 Text = "C:\\Program Files (x86)\\Steam\\steamapps" // Default placeholder
@@ -422,8 +342,9 @@ namespace ScheduleIDevelopementEnvironementManager
             btnBrowseSteamLibrary = new Button
             {
                 Text = "Browse...",
-                Location = new Point(530, 49), // Moved down from 44 to 49 to align with textbox
-                Size = new Size(80, 25)
+                Location = new Point(530, 48), // Aligned with textbox top
+                Size = new Size(80, 29), // Match textbox height for perfect alignment
+                TextAlign = ContentAlignment.MiddleCenter
             };
 
             // Game Installation Section
@@ -431,13 +352,13 @@ namespace ScheduleIDevelopementEnvironementManager
             {
                 Text = "Schedule I Game Path:",
                 Location = new Point(20, 80),
-                Size = new Size(180, 25), // Increased width and height for better text display
+                Size = new Size(180, 27), // Increased width and height for better text display
                 Font = new Font(this.Font.FontFamily, 10, FontStyle.Bold)
             };
 
             txtGameInstall = new TextBox
             {
-                Location = new Point(20, 110), // Moved down from 105 to 110 for better spacing
+                Location = new Point(20, 108), // Reduced gap from label (80+25+3=108)
                 Size = new Size(500, 23),
                 ReadOnly = true
             };
@@ -445,8 +366,9 @@ namespace ScheduleIDevelopementEnvironementManager
             btnBrowseGameInstall = new Button
             {
                 Text = "Browse...",
-                Location = new Point(530, 109), // Moved down from 104 to 109 to align with textbox
-                Size = new Size(80, 25)
+                Location = new Point(530, 108), // Aligned with textbox top
+                Size = new Size(80, 29), // Match textbox height for perfect alignment
+                TextAlign = ContentAlignment.MiddleCenter
             };
 
             // Managed Environment Section
@@ -460,16 +382,17 @@ namespace ScheduleIDevelopementEnvironementManager
 
             txtManagedEnv = new TextBox
             {
-                Location = new Point(20, 170), // Moved down from 165 to 170 for better spacing
-                Size = new Size(500, 23),
+                Location = new Point(20, 168), // Reduced gap from label (140+25+3=168)
+                Size = new Size(500, 25),
                 ReadOnly = true
             };
 
             btnBrowseManagedEnv = new Button
             {
                 Text = "Browse...",
-                Location = new Point(530, 169), // Moved down from 164 to 169 to align with textbox
-                Size = new Size(80, 25)
+                Location = new Point(530, 168), // Aligned with textbox top
+                Size = new Size(80, 29), // Match textbox height for perfect alignment
+                TextAlign = ContentAlignment.MiddleCenter
             };
 
             // Current Branch Detection Section
@@ -589,6 +512,31 @@ namespace ScheduleIDevelopementEnvironementManager
                 Location = new Point(410, 400),
                 Size = new Size(80, 35)
             };
+
+            // Apply dark theme to all controls
+            ApplyDarkThemeToControl(lblSteamLibrary);
+            ApplyDarkThemeToControl(txtSteamLibrary);
+            ApplyDarkThemeToControl(btnBrowseSteamLibrary);
+            ApplyDarkThemeToControl(lblGameInstall);
+            ApplyDarkThemeToControl(txtGameInstall);
+            ApplyDarkThemeToControl(btnBrowseGameInstall);
+            ApplyDarkThemeToControl(lblManagedEnv);
+            ApplyDarkThemeToControl(txtManagedEnv);
+            ApplyDarkThemeToControl(btnBrowseManagedEnv);
+            ApplyDarkThemeToControl(lblCurrentBranch);
+            ApplyDarkThemeToControl(cboCurrentBranch);
+            ApplyDarkThemeToControl(lblBranches);
+            ApplyDarkThemeToControl(chkMainBranch);
+            ApplyDarkThemeToControl(chkBetaBranch);
+            ApplyDarkThemeToControl(chkAlternateBranch);
+            ApplyDarkThemeToControl(chkAlternateBetaBranch);
+            ApplyDarkThemeToControl(lblStatus);
+            ApplyDarkThemeToControl(lblConfigInfo);
+            ApplyDarkThemeToControl(txtConfigInfo);
+            ApplyDarkThemeToControl(progressBar);
+            ApplyDarkThemeToControl(btnCreateEnvironment);
+            ApplyDarkThemeToControl(btnRefresh);
+            ApplyDarkThemeToControl(btnExit);
 
             // Add controls to form
             this.Controls.AddRange(new Control[]
@@ -1189,8 +1137,12 @@ namespace ScheduleIDevelopementEnvironementManager
                 // Save final configuration after successful environment creation
                 SaveConfigurationAsync();
                 
-                MessageBox.Show("Managed environment created successfully!", "Success", 
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                // Show success message and close application for restart
+                MessageBox.Show("Environment created successfully!\n\nThe application will now close. Please restart it to open your managed environment.", 
+                    "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                
+                // Close this form and let the application restart to load the managed environment
+                this.Close();
             }
             catch (Exception ex)
             {
@@ -1242,40 +1194,64 @@ namespace ScheduleIDevelopementEnvironementManager
                 }
 
                 _logger.LogInformation("Starting managed environment creation. Current branch: {CurrentBranch}", currentBranch);
-                int branchIndex = 0;
-                // Start processing the current branch first, then move to selected branches
-                var progressForm = new CopyProgressForm();
-                progressForm.Show();
 
-                try
+                // Show warning popup before first copy operation
+                var warningResult = MessageBox.Show(
+                    "IMPORTANT NOTICE:\n\n" +
+                    "The application may appear to freeze or become unresponsive during the directory creation phase of the copy operation. " +
+                    "This is normal behavior due to the large size of the game files.\n\n" +
+                    "Please be patient and DO NOT close the application during this process. " +
+                    "The copy progress window will show detailed progress once the initial setup is complete.\n\n" +
+                    "Do you want to continue with the managed environment creation?",
+                    "Large File Copy Warning",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning);
+
+                if (warningResult == DialogResult.No)
                 {
-                    await CopyGameToBranchAsync(currentBranch, progressForm);
-                    progressForm.SetCopyComplete();
+                    _logger.LogInformation("User cancelled managed environment creation after warning");
+                    return;
                 }
-                finally
+
+                // First, copy the current branch (what the user already has installed)
+                if (_config.SelectedBranches.Contains(currentBranch))
                 {
-                    progressForm.Close();
-                    progressForm.Dispose();
+                    _logger.LogInformation("Copying current branch first: {CurrentBranch}", currentBranch);
+                    
+                    using var currentBranchProgressForm = new CopyProgressForm();
+                    currentBranchProgressForm.Show();
+
+                    try
+                    {
+                        await CopyGameToBranchAsync(currentBranch, currentBranchProgressForm);
+                        currentBranchProgressForm.SetCopyComplete();
+                    }
+                    finally
+                    {
+                        currentBranchProgressForm.Close();
+                        currentBranchProgressForm.Dispose();
+                    }
+                    
+                    _logger.LogInformation("Completed copying current branch: {Branch}", currentBranch);
                 }
+
+                // Now process other selected branches (excluding the current one)
+                var otherBranches = _config.SelectedBranches.Where(branch => branch != currentBranch).ToList();
                 
-                if (_config.SelectedBranches.Count == 1)
+                if (otherBranches.Count == 0)
                 {
                     _logger.LogInformation("No additional branches selected, finished after copying current branch");
                     return;
                 }
 
-                foreach (var branch in _config.SelectedBranches)
+                // Process each other branch
+                for (int i = 0; i < otherBranches.Count; i++)
                 {
-                    if (branch == currentBranch)
-                    {
-                        //_logger.LogInformation("Skipping {Branch} - already current branch", branch);
-                        branchIndex++;
-                        continue;
-                    }
-                    _logger.LogInformation("Selected branch for environment: {Branch}", branch);
+                    var targetBranch = otherBranches[i];
+                    _logger.LogInformation("Processing branch {Index}/{Total}: {Branch}", i + 1, otherBranches.Count, targetBranch);
 
                     // Show branch switch prompt BEFORE copying the branch
-                    using var switchPrompt = new BranchSwitchPromptForm(currentBranch, branch);
+                    using var switchPrompt = new BranchSwitchPromptForm(currentBranch, targetBranch);
                     var result = switchPrompt.ShowDialog();
                     if (result == DialogResult.Cancel)
                     {
@@ -1284,30 +1260,28 @@ namespace ScheduleIDevelopementEnvironementManager
                     }
 
                     // Wait for user to actually switch the branch
-                    var switchSuccess = await _steamService.WaitForBranchSwitchAsync(branch, _config.GameInstallPath);
+                    var switchSuccess = await _steamService.WaitForBranchSwitchAsync(targetBranch, _config.GameInstallPath);
                     if (!switchSuccess)
                     {
-                        throw new Exception($"Failed to detect branch switch to {branch} within timeout period");
+                        throw new Exception($"Failed to detect branch switch to {targetBranch} within timeout period");
                     }
 
                     // Update current branch for next iteration
-                    currentBranch = branch;
+                    currentBranch = targetBranch;
                     _logger.LogInformation("Successfully switched to branch: {Branch}", currentBranch);
 
                     // Now copy the branch after switching to it
-                    var branchProgressForm = new CopyProgressForm();
+                    using var branchProgressForm = new CopyProgressForm();
                     branchProgressForm.Show();
-                    
+
                     try
                     {
-                        await CopyGameToBranchAsync(branch, branchProgressForm);
+                        await CopyGameToBranchAsync(targetBranch, branchProgressForm);
                         branchProgressForm.SetCopyComplete();
                     }
                     catch (Exception ex)
                     {
-                        // Use the branch-specific progress form for error reporting
-                        if (!branchProgressForm.IsDisposed)
-                            branchProgressForm.SetCopyFailed(ex.Message);
+                        branchProgressForm.SetCopyFailed(ex.Message);
                         throw;
                     }
                     finally
@@ -1315,70 +1289,9 @@ namespace ScheduleIDevelopementEnvironementManager
                         branchProgressForm.Close();
                         branchProgressForm.Dispose();
                     }
-                    
-                    branchIndex++;
+
+                    _logger.LogInformation("Completed copying branch: {Branch}", targetBranch);
                 }
-
-                // Process each selected branch
-                //for (int i = 0; i < _config.SelectedBranches.Count; i++)
-                //{
-                //    var targetBranch = _config.SelectedBranches[i];
-                    
-                //    // Skip if this branch is already the current one
-                //    //if (targetBranch == currentBranch)
-                //    //{
-                //    //    _logger.LogInformation("Skipping {Branch} - already current branch", targetBranch);
-                //    //    continue;
-                //    //}
-
-                //    // Show progress form for this branch
-                //    using var progressForm = new CopyProgressForm();
-                //    progressForm.Show();
-                    
-                //    try
-                //    {
-                //        // Copy current game state to target branch folder
-                //        await CopyGameToBranchAsync(targetBranch, progressForm);
-                        
-                //        // Close progress form
-                //        progressForm.SetCopyComplete();
-                //        progressForm.Close();
-                        
-                //        // If this isn't the last branch, prompt user to switch
-                //        if (i < _config.SelectedBranches.Count - 1)
-                //        {
-                //            var nextBranch = _config.SelectedBranches[i + 1];
-                            
-                //            // Show branch switch prompt
-                //            using var switchPrompt = new BranchSwitchPromptForm(currentBranch, nextBranch);
-                //            var result = switchPrompt.ShowDialog();
-                            
-                //            if (result == DialogResult.Cancel)
-                //            {
-                //                _logger.LogInformation("User cancelled branch switch operation");
-                //                break;
-                //            }
-                            
-                //            // Wait for user to actually switch the branch
-                //            var switchSuccess = await _steamService.WaitForBranchSwitchAsync(nextBranch, _config.GameInstallPath);
-                            
-                //            if (!switchSuccess)
-                //            {
-                //                throw new Exception($"Failed to detect branch switch to {nextBranch} within timeout period");
-                //            }
-                            
-                //            // Update current branch for next iteration
-                //            currentBranch = nextBranch;
-                //            _logger.LogInformation("Successfully switched to branch: {Branch}", currentBranch);
-                //        }
-                //    }
-                //    catch (Exception ex)
-                //    {
-                //        progressForm.SetCopyFailed(ex.Message);
-                //        progressForm.Close();
-                //        throw;
-                //    }
-                //}
 
                 _logger.LogInformation("Managed environment created successfully at: {Path}", _config.ManagedEnvironmentPath);
             }
@@ -1530,6 +1443,9 @@ namespace ScheduleIDevelopementEnvironementManager
                 this.Text = "Schedule I Development Environment Manager";
                 this.Size = new Size(800, 700);
                 
+                // Apply dark theme
+                ApplyDarkTheme();
+                
                 // Create and show normal UI
                 CreateControls();
                 SetupEventHandlers();
@@ -1563,5 +1479,85 @@ namespace ScheduleIDevelopementEnvironementManager
         private Button? btnCreateEnvironment;
         private Button? btnRefresh;
         private Button? btnExit;
+
+        #region Dark Theme Methods
+
+        /// <summary>
+        /// Applies dark theme to the main form
+        /// </summary>
+        private void ApplyDarkTheme()
+        {
+            // Set form background to dark gray
+            this.BackColor = Color.FromArgb(45, 45, 48);
+            this.ForeColor = Color.White;
+        }
+
+        /// <summary>
+        /// Applies dark theme to individual controls
+        /// </summary>
+        /// <param name="control">The control to apply dark theme to</param>
+        private void ApplyDarkThemeToControl(Control? control)
+        {
+            if (control == null) return;
+
+            // Apply dark theme based on control type
+            switch (control)
+            {
+                case Form form:
+                    form.BackColor = Color.FromArgb(45, 45, 48);
+                    form.ForeColor = Color.White;
+                    break;
+
+                case Label label:
+                    label.BackColor = Color.Transparent;
+                    label.ForeColor = Color.White;
+                    break;
+
+                case TextBox textBox:
+                    textBox.BackColor = Color.FromArgb(30, 30, 30);
+                    textBox.ForeColor = Color.White;
+                    textBox.BorderStyle = BorderStyle.FixedSingle;
+                    break;
+
+                case Button button:
+                    button.BackColor = Color.FromArgb(0, 122, 204); // Professional blue
+                    button.ForeColor = Color.White;
+                    button.FlatStyle = FlatStyle.Flat;
+                    button.FlatAppearance.BorderColor = Color.FromArgb(0, 100, 180);
+                    button.FlatAppearance.MouseOverBackColor = Color.FromArgb(0, 140, 230);
+                    button.FlatAppearance.MouseDownBackColor = Color.FromArgb(0, 100, 180);
+                    break;
+
+                case ComboBox comboBox:
+                    comboBox.BackColor = Color.FromArgb(30, 30, 30);
+                    comboBox.ForeColor = Color.White;
+                    comboBox.FlatStyle = FlatStyle.Flat;
+                    break;
+
+                case CheckBox checkBox:
+                    checkBox.BackColor = Color.Transparent;
+                    checkBox.ForeColor = Color.White;
+                    break;
+
+                case ProgressBar progressBar:
+                    progressBar.BackColor = Color.FromArgb(30, 30, 30);
+                    progressBar.ForeColor = Color.FromArgb(0, 122, 204);
+                    break;
+
+                case RichTextBox richTextBox:
+                    richTextBox.BackColor = Color.FromArgb(30, 30, 30);
+                    richTextBox.ForeColor = Color.White;
+                    richTextBox.BorderStyle = BorderStyle.FixedSingle;
+                    break;
+            }
+
+            // Recursively apply to child controls
+            foreach (Control childControl in control.Controls)
+            {
+                ApplyDarkThemeToControl(childControl);
+            }
+        }
+
+        #endregion
     }
 }

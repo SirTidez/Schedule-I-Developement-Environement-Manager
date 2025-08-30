@@ -26,7 +26,7 @@ namespace ScheduleIDevelopementEnvironementManager
         private void InitializeComponent()
         {
             this.Text = "Switch to Next Branch";
-            this.Size = new Size(500, 300);
+            this.Size = new Size(500, 450); // Increased height from 300 to 450
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
@@ -34,6 +34,9 @@ namespace ScheduleIDevelopementEnvironementManager
             
             // Load the application icon
             this.Icon = MainForm.LoadApplicationIcon();
+
+            // Apply dark theme to the form
+            ApplyDarkTheme();
 
             // Main message
             lblMessage = new Label
@@ -76,11 +79,22 @@ namespace ScheduleIDevelopementEnvironementManager
                 TextAlign = ContentAlignment.TopLeft
             };
 
+            // Important note about waiting for download completion
+            var lblDownloadNote = new Label
+            {
+                Text = "⚠️ IMPORTANT: After switching branches, ensure that Steam has fully downloaded and installed the new branch before clicking OK. The game should show as 'Ready to Play' in your Steam library.",
+                Location = new Point(20, 270),
+                Size = new Size(450, 60),
+                Font = new Font(this.Font.FontFamily, 8, FontStyle.Bold),
+                TextAlign = ContentAlignment.TopLeft,
+                ForeColor = Color.Orange
+            };
+
             // OK button
             btnOk = new Button
             {
                 Text = "OK - Branch Switched",
-                Location = new Point(150, 220),
+                Location = new Point(150, 360), // Moved down from 220 to 360
                 Size = new Size(120, 30),
                 DialogResult = DialogResult.OK
             };
@@ -91,10 +105,19 @@ namespace ScheduleIDevelopementEnvironementManager
             btnCancel = new Button
             {
                 Text = "Cancel",
-                Location = new Point(290, 220),
+                Location = new Point(290, 360), // Moved down from 220 to 360
                 Size = new Size(80, 30),
                 DialogResult = DialogResult.Cancel
             };
+
+            // Apply dark theme to all controls
+            ApplyDarkThemeToControl(lblMessage);
+            ApplyDarkThemeToControl(lblCurrentBranch);
+            ApplyDarkThemeToControl(lblNextBranch);
+            ApplyDarkThemeToControl(lblInstructions);
+            ApplyDarkThemeToControl(lblDownloadNote);
+            ApplyDarkThemeToControl(btnOk);
+            ApplyDarkThemeToControl(btnCancel);
 
             // Add controls to form
             this.Controls.AddRange(new Control[]
@@ -103,6 +126,7 @@ namespace ScheduleIDevelopementEnvironementManager
                 lblCurrentBranch,
                 lblNextBranch,
                 lblInstructions,
+                lblDownloadNote,
                 btnOk,
                 btnCancel
             });
@@ -125,5 +149,57 @@ namespace ScheduleIDevelopementEnvironementManager
             }
             base.OnFormClosing(e);
         }
+
+        #region Dark Theme Methods
+
+        /// <summary>
+        /// Applies dark theme to the form
+        /// </summary>
+        private void ApplyDarkTheme()
+        {
+            // Set form background to dark gray
+            this.BackColor = Color.FromArgb(45, 45, 48);
+            this.ForeColor = Color.White;
+        }
+
+        /// <summary>
+        /// Applies dark theme to individual controls
+        /// </summary>
+        /// <param name="control">The control to apply dark theme to</param>
+        private void ApplyDarkThemeToControl(Control? control)
+        {
+            if (control == null) return;
+
+            // Apply dark theme based on control type
+            switch (control)
+            {
+                case Form form:
+                    form.BackColor = Color.FromArgb(45, 45, 48);
+                    form.ForeColor = Color.White;
+                    break;
+
+                case Label label:
+                    label.BackColor = Color.Transparent;
+                    label.ForeColor = Color.White;
+                    break;
+
+                case Button button:
+                    button.BackColor = Color.FromArgb(0, 122, 204); // Professional blue
+                    button.ForeColor = Color.White;
+                    button.FlatStyle = FlatStyle.Flat;
+                    button.FlatAppearance.BorderColor = Color.FromArgb(0, 100, 180);
+                    button.FlatAppearance.MouseOverBackColor = Color.FromArgb(0, 140, 230);
+                    button.FlatAppearance.MouseDownBackColor = Color.FromArgb(0, 100, 180);
+                    break;
+            }
+
+            // Recursively apply to child controls
+            foreach (Control childControl in control.Controls)
+            {
+                ApplyDarkThemeToControl(childControl);
+            }
+        }
+
+        #endregion
     }
 }
