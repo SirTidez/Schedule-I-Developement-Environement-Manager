@@ -16,8 +16,8 @@ namespace ScheduleIDevelopementEnvironementManager.Services
         {
             // Set up logging directory in AppData\LocalLow\TVGS\Schedule I\Developer Env\logs
             var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            _logDirectory = Path.Combine(appDataPath, "TVGS", "Schedule I", "Developer Env", "logs");
-            
+            _logDirectory = Path.Combine(appDataPath, "Schedule I Developer Env", "logs");
+
             // Create log filename with format {dd-mm-yy} {hh:mm}.log
             var now = DateTime.Now;
             var logFileName = $"{now:dd-MM-yy} {now:HH-mm}.log";

@@ -34,6 +34,9 @@ namespace ScheduleIDevelopementEnvironementManager
             this.MinimizeBox = false;
             this.ShowInTaskbar = false;
             this.TopMost = true;
+            
+            // Load the application icon
+            this.Icon = MainForm.LoadApplicationIcon();
 
             CreateControls();
             SetupEventHandlers();

@@ -31,6 +31,9 @@ namespace ScheduleIDevelopementEnvironementManager
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
+            
+            // Load the application icon
+            this.Icon = MainForm.LoadApplicationIcon();
 
             // Main message
             lblMessage = new Label

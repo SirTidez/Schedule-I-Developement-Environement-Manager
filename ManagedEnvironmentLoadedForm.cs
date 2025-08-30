@@ -55,6 +55,9 @@ namespace ScheduleIDevelopementEnvironementManager
             this.StartPosition = FormStartPosition.CenterScreen;
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
+            
+            // Load the application icon
+            this.Icon = MainForm.LoadApplicationIcon();
 
             CreateControls();
             SetupEventHandlers();

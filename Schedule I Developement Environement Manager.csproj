@@ -22,8 +22,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="Schedule I Developement Environement Manager.ico" />
+    <Resource Include="Schedule I Development Environment Manager.ico" />
     <Resource Include="small.ico" />
+    <EmbeddedResource Include="app-icon.png" />
   </ItemGroup>
 
 </Project>

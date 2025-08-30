@@ -59,10 +59,13 @@ namespace ScheduleIDevelopementEnvironementManager
         private void InitializeForm()
         {
             this.Text = "Create Managed Environment";
-            this.Size = new Size(700, 600);
+            this.Size = new Size(700, 650);
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
+            
+            // Load the application icon
+            this.Icon = MainForm.LoadApplicationIcon();
 
             CreateControls();
             SetupEventHandlers();
@@ -74,14 +77,14 @@ namespace ScheduleIDevelopementEnvironementManager
             var lblSteamLibrary = new Label
             {
                 Text = "Steam Library Path:",
-                Location = new Point(20, 20),
-                Size = new Size(150, 20),
+                Location = new Point(20, 25),
+                Size = new Size(200, 25),
                 Font = new Font(this.Font.FontFamily, 10, FontStyle.Bold)
             };
 
             txtSteamLibrary = new TextBox
             {
-                Location = new Point(20, 45),
+                Location = new Point(20, 55),
                 Size = new Size(500, 23),
                 ReadOnly = true,
                 Text = "C:\\Program Files (x86)\\Steam\\steamapps" // Default placeholder
@@ -90,7 +93,7 @@ namespace ScheduleIDevelopementEnvironementManager
             btnBrowseSteamLibrary = new Button
             {
                 Text = "Browse...",
-                Location = new Point(530, 44),
+                Location = new Point(530, 54),
                 Size = new Size(80, 25)
             };
 
@@ -98,14 +101,14 @@ namespace ScheduleIDevelopementEnvironementManager
             var lblGameInstall = new Label
             {
                 Text = "Schedule I Game Path:",
-                Location = new Point(20, 80),
-                Size = new Size(150, 20),
+                Location = new Point(20, 95),
+                Size = new Size(200, 25),
                 Font = new Font(this.Font.FontFamily, 10, FontStyle.Bold)
             };
 
             txtGameInstall = new TextBox
             {
-                Location = new Point(20, 105),
+                Location = new Point(20, 125),
                 Size = new Size(500, 23),
                 ReadOnly = true
             };
@@ -113,7 +116,7 @@ namespace ScheduleIDevelopementEnvironementManager
             btnBrowseGameInstall = new Button
             {
                 Text = "Browse...",
-                Location = new Point(530, 104),
+                Location = new Point(530, 124),
                 Size = new Size(80, 25)
             };
 
@@ -121,14 +124,14 @@ namespace ScheduleIDevelopementEnvironementManager
             var lblManagedEnv = new Label
             {
                 Text = "Managed Environment Path:",
-                Location = new Point(20, 140),
-                Size = new Size(150, 20),
+                Location = new Point(20, 165),
+                Size = new Size(200, 25),
                 Font = new Font(this.Font.FontFamily, 10, FontStyle.Bold)
             };
 
             txtManagedEnv = new TextBox
             {
-                Location = new Point(20, 165),
+                Location = new Point(20, 195),
                 Size = new Size(500, 23),
                 ReadOnly = true
             };
@@ -136,7 +139,7 @@ namespace ScheduleIDevelopementEnvironementManager
             btnBrowseManagedEnv = new Button
             {
                 Text = "Browse...",
-                Location = new Point(530, 164),
+                Location = new Point(530, 194),
                 Size = new Size(80, 25)
             };
 
@@ -144,45 +147,45 @@ namespace ScheduleIDevelopementEnvironementManager
             var lblBranches = new Label
             {
                 Text = "Select Branches to Manage:",
-                Location = new Point(20, 200),
-                Size = new Size(200, 20),
+                Location = new Point(20, 235),
+                Size = new Size(250, 25),
                 Font = new Font(this.Font.FontFamily, 10, FontStyle.Bold)
             };
 
             chkMainBranch = new CheckBox
             {
                 Text = "Main Branch",
-                Location = new Point(20, 230),
-                Size = new Size(120, 20)
+                Location = new Point(20, 270),
+                Size = new Size(130, 25)
             };
 
             chkBetaBranch = new CheckBox
             {
                 Text = "Beta Branch",
-                Location = new Point(150, 230),
-                Size = new Size(120, 20)
+                Location = new Point(160, 270),
+                Size = new Size(130, 25)
             };
 
             chkAlternateBranch = new CheckBox
             {
                 Text = "Alternate Branch",
-                Location = new Point(280, 230),
-                Size = new Size(120, 20)
+                Location = new Point(300, 270),
+                Size = new Size(130, 25)
             };
 
             chkAlternateBetaBranch = new CheckBox
             {
                 Text = "Alternate Beta Branch",
-                Location = new Point(410, 230),
-                Size = new Size(150, 20)
+                Location = new Point(440, 270),
+                Size = new Size(170, 25)
             };
 
             // Status Label
             lblStatus = new Label
             {
                 Text = "Ready to configure managed environment",
-                Location = new Point(20, 270),
-                Size = new Size(600, 20),
+                Location = new Point(20, 315),
+                Size = new Size(600, 25),
                 Font = new Font(this.Font.FontFamily, 9),
                 ForeColor = Color.Blue
             };
@@ -191,8 +194,8 @@ namespace ScheduleIDevelopementEnvironementManager
             btnCreateEnvironment = new Button
             {
                 Text = "Create Managed Environment",
-                Location = new Point(200, 320),
-                Size = new Size(180, 40),
+                Location = new Point(200, 360),
+                Size = new Size(200, 45),
                 Font = new Font(this.Font.FontFamily, 12, FontStyle.Bold),
                 BackColor = Color.LightGreen,
                 Enabled = false
@@ -201,8 +204,8 @@ namespace ScheduleIDevelopementEnvironementManager
             btnCancel = new Button
             {
                 Text = "Cancel",
-                Location = new Point(400, 320),
-                Size = new Size(100, 40)
+                Location = new Point(420, 360),
+                Size = new Size(120, 45)
             };
 
             // Add controls to form

@@ -449,27 +449,27 @@ namespace ScheduleIDevelopementEnvironementManager.Services
         }
 
         /// <summary>
-        /// Parses the Steam app manifest to extract the BuildID
+        /// Parses the Steam app manifest to extract the buildid
         /// </summary>
         private string? ParseBuildIdFromManifest(string manifestContent)
         {
             try
             {
-                // Look for BuildID in the manifest
-                var buildIdMatch = System.Text.RegularExpressions.Regex.Match(manifestContent, "\"BuildID\"\\s+\"([^\"]+)\"");
+                // Look for buildid in the manifest (lowercase, no spaces as per Steam's format)
+                var buildIdMatch = System.Text.RegularExpressions.Regex.Match(manifestContent, "\"buildid\"\\s+\"([^\"]+)\"");
                 if (buildIdMatch.Success)
                 {
                     var buildId = buildIdMatch.Groups[1].Value.Trim();
-                    _logger.LogInformation("Found BuildID in manifest: {BuildId}", buildId);
+                    _logger.LogInformation("Found buildid in manifest: {BuildId}", buildId);
                     return buildId;
                 }
 
-                _logger.LogInformation("No BuildID found in manifest");
+                _logger.LogInformation("No buildid found in manifest");
                 return null;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error parsing BuildID from manifest");
+                _logger.LogError(ex, "Error parsing buildid from manifest");
                 return null;
             }
         }

@@ -21,7 +21,7 @@ namespace ScheduleIDevelopementEnvironementManager.Services
             
             // Set up configuration directory in AppData\LocalLow\TVGS\Schedule I\Developer Env\config
             var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            _configDirectory = Path.Combine(appDataPath, "TVGS", "Schedule I", "Developer Env", "config");
+            _configDirectory = Path.Combine(appDataPath, "Schedule I Developer Env", "config");
             _configFilePath = Path.Combine(_configDirectory, ConfigFileName);
             
             _logger.LogInformation("Configuration directory: {ConfigDir}", _configDirectory);
