@@ -475,6 +475,82 @@ namespace ScheduleIDevelopementEnvironementManager.Services
         }
 
         /// <summary>
+        /// Waits for the user to switch to a specific branch and verifies the change
+        /// </summary>
+        /// <param name="targetBranch">The branch the user should switch to</param>
+        /// <param name="gameInstallPath">The current game installation path</param>
+        /// <param name="maxWaitTime">Maximum time to wait for branch switch (default: 5 minutes)</param>
+        /// <returns>True if branch was successfully switched, false if timeout or cancelled</returns>
+        public async Task<bool> WaitForBranchSwitchAsync(string targetBranch, string gameInstallPath, TimeSpan maxWaitTime = default)
+        {
+            if (maxWaitTime == default)
+                maxWaitTime = TimeSpan.FromMinutes(5);
+
+            var startTime = DateTime.Now;
+            var checkInterval = TimeSpan.FromSeconds(5); // Check every 5 seconds
+
+            _logger.LogInformation("Waiting for user to switch to branch: {TargetBranch}", targetBranch);
+
+            while (DateTime.Now - startTime < maxWaitTime)
+            {
+                try
+                {
+                    // Get current branch from manifest
+                    var currentBranch = GetCurrentBranchFromGamePath(gameInstallPath);
+                    
+                    if (currentBranch == targetBranch)
+                    {
+                        _logger.LogInformation("Successfully detected branch switch to: {Branch}", targetBranch);
+                        return true;
+                    }
+
+                    _logger.LogDebug("Current branch is still: {CurrentBranch}, waiting for: {TargetBranch}", 
+                        currentBranch, targetBranch);
+
+                    // Wait before next check
+                    await Task.Delay(checkInterval);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error checking branch during wait, continuing...");
+                    await Task.Delay(checkInterval);
+                }
+            }
+
+            _logger.LogWarning("Timeout waiting for branch switch to: {TargetBranch}", targetBranch);
+            return false;
+        }
+
+        /// <summary>
+        /// Gets the current branch from a game installation path
+        /// </summary>
+        /// <param name="gameInstallPath">The game installation path</param>
+        /// <returns>The current branch name or null if not found</returns>
+        public string? GetCurrentBranchFromGamePath(string gameInstallPath)
+        {
+            try
+            {
+                // Go up two levels from game install path to reach steamapps directory
+                var steamAppsPath = Path.GetFullPath(Path.Combine(gameInstallPath, "..", ".."));
+                var appManifestPath = Path.Combine(steamAppsPath, $"appmanifest_{ScheduleISteamId}.acf");
+
+                if (!File.Exists(appManifestPath))
+                {
+                    _logger.LogWarning("App manifest not found at: {Path}", appManifestPath);
+                    return null;
+                }
+
+                var manifestContent = File.ReadAllText(appManifestPath);
+                return ParseBranchFromManifest(manifestContent);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting current branch from game path: {Path}", gameInstallPath);
+                return null;
+            }
+        }
+
+        /// <summary>
         /// Parses a Steam app manifest file
         /// </summary>
         private SteamGameInfo? ParseAppManifest(string manifestPath, string libraryPath)

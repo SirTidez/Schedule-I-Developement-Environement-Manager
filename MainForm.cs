@@ -40,8 +40,245 @@ namespace ScheduleIDevelopementEnvironementManager
             _availableGames = new List<SteamGameInfo>();
             
             InitializeForm();
-            LoadConfiguration();
-            LoadSteamInformation();
+            CheckManagedEnvironmentConfiguration();
+        }
+
+        private async void CheckManagedEnvironmentConfiguration()
+        {
+            try
+            {
+                _logger.LogInformation("Checking for managed environment configuration...");
+                
+                var loadedConfig = await _configService.LoadConfigurationAsync();
+                if (loadedConfig != null && IsManagedEnvironmentConfigured(loadedConfig))
+                {
+                    // Managed environment exists, show the managed environment loaded form
+                    _config = loadedConfig;
+                    _logger.LogInformation("Managed environment configuration found, showing managed environment loaded form");
+                    ShowManagedEnvironmentLoadedForm();
+                }
+                else
+                {
+                    // No managed environment, show setup UI
+                    _logger.LogInformation("No managed environment configuration found, showing setup UI");
+                    ShowSetupUI();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking managed environment configuration");
+                ShowSetupUI();
+            }
+        }
+
+        private bool IsManagedEnvironmentConfigured(DevEnvironmentConfig config)
+        {
+            // Check if we have the essential paths and at least one branch selected
+            return !string.IsNullOrEmpty(config.ManagedEnvironmentPath) && 
+                   !string.IsNullOrEmpty(config.GameInstallPath) &&
+                   config.SelectedBranches.Count > 0;
+        }
+
+        private void ShowManagedEnvironmentLoadedForm()
+        {
+            try
+            {
+                _logger.LogInformation("Showing managed environment loaded form");
+                
+                // Create and show the managed environment loaded form
+                using var managedEnvForm = new ManagedEnvironmentLoadedForm(_config);
+                var result = managedEnvForm.ShowDialog();
+                
+                // After the form closes, check if we need to show setup UI
+                if (result == DialogResult.Cancel || result == DialogResult.Abort)
+                {
+                    // User cancelled or closed the form, show setup UI
+                    ShowSetupUI();
+                }
+                else
+                {
+                    // Form closed normally, exit the application
+                    this.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error showing managed environment loaded form");
+                MessageBox.Show($"Error showing managed environment loaded form: {ex.Message}", "Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ShowSetupUI();
+            }
+        }
+
+        private void ShowCreateManagedEnvironmentForm()
+        {
+            try
+            {
+                _logger.LogInformation("Showing Create Managed Environment form");
+                
+                // Create and show the Create Managed Environment form
+                using var createEnvForm = new CreateManagedEnvironmentForm();
+                var result = createEnvForm.ShowDialog();
+                
+                if (result == DialogResult.OK)
+                {
+                    // Environment was created successfully, reload configuration and show managed environment loaded form
+                    _logger.LogInformation("Managed environment created successfully, reloading configuration");
+                    
+                    // Reload configuration to get the newly created environment
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            var newConfig = await _configService.LoadConfigurationAsync();
+                            if (newConfig != null && IsManagedEnvironmentConfigured(newConfig))
+                            {
+                                _config = newConfig;
+                                this.Invoke(() =>
+                                {
+                                    ShowManagedEnvironmentLoadedForm();
+                                });
+                            }
+                            else
+                            {
+                                this.Invoke(() =>
+                                {
+                                    MessageBox.Show("Environment was created but configuration could not be loaded. Please restart the application.", 
+                                        "Configuration Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                    ShowSetupUI();
+                                });
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error reloading configuration after environment creation");
+                            this.Invoke(() =>
+                            {
+                                MessageBox.Show($"Error reloading configuration: {ex.Message}. Please restart the application.", 
+                                    "Configuration Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                ShowSetupUI();
+                            });
+                        }
+                    });
+                }
+                else
+                {
+                    // User cancelled, stay on setup UI
+                    _logger.LogInformation("User cancelled Create Managed Environment form");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error showing Create Managed Environment form");
+                MessageBox.Show($"Error showing Create Managed Environment form: {ex.Message}", "Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void ShowSetupUI()
+        {
+            // Clear existing controls
+            this.Controls.Clear();
+            
+            // Set up the setup UI
+            this.Text = "Schedule I Development Environment Manager - Setup";
+            this.Size = new Size(600, 400);
+            this.StartPosition = FormStartPosition.CenterScreen;
+            this.FormBorderStyle = FormBorderStyle.FixedSingle;
+            this.MaximizeBox = false;
+
+            CreateSetupControls();
+            SetupSetupEventHandlers();
+        }
+
+        private void CreateSetupControls()
+        {
+            // Title
+            var lblTitle = new Label
+            {
+                Text = "No Development Environment Detected!",
+                Location = new Point(50, 50),
+                Size = new Size(500, 30),
+                Font = new Font(this.Font.FontFamily, 16, FontStyle.Bold),
+                ForeColor = Color.Red,
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+
+            // Description
+            var lblDescription = new Label
+            {
+                Text = "Click 'Setup Environment' to configure your development environment, or 'Load Configuration' to use an existing configuration file.",
+                Location = new Point(50, 100),
+                Size = new Size(500, 40),
+                Font = new Font(this.Font.FontFamily, 10),
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+
+            // Create Environment Button
+            btnCreateEnvironment = new Button
+            {
+                Text = "Setup Environment",
+                Location = new Point(150, 180),
+                Size = new Size(150, 40),
+                Font = new Font(this.Font.FontFamily, 12, FontStyle.Bold),
+                BackColor = Color.LightGreen
+            };
+
+            // Load Configuration Button
+            var btnLoadConfig = new Button
+            {
+                Text = "Load Configuration",
+                Location = new Point(320, 180),
+                Size = new Size(150, 40),
+                Font = new Font(this.Font.FontFamily, 12, FontStyle.Bold),
+                BackColor = Color.LightBlue
+            };
+
+            // Exit Button
+            btnExit = new Button
+            {
+                Text = "Exit",
+                Location = new Point(250, 250),
+                Size = new Size(100, 35)
+            };
+
+            // Add controls to form
+            this.Controls.AddRange(new Control[]
+            {
+                lblTitle, lblDescription, btnCreateEnvironment, btnLoadConfig, btnExit
+            });
+        }
+
+        private void SetupSetupEventHandlers()
+        {
+            btnCreateEnvironment!.Click += BtnSetupEnvironment_Click;
+            btnExit!.Click += BtnExit_Click;
+            
+            // Find the Load Configuration button and set up its event handler
+            var btnLoadConfig = this.Controls.OfType<Button>().FirstOrDefault(b => b.Text == "Load Configuration");
+            if (btnLoadConfig != null)
+            {
+                btnLoadConfig.Click += BtnLoadConfiguration_Click;
+            }
+        }
+
+        private void BtnLoadConfiguration_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                _logger.LogInformation("Load Configuration button clicked, showing configuration window");
+                
+                // TODO: Show the configuration window (placeholder for now)
+                MessageBox.Show("Configuration window functionality will be implemented later.", 
+                              "Coming Soon", 
+                              MessageBoxButtons.OK, 
+                              MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling Load Configuration button click");
+                MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void InitializeForm()
@@ -819,19 +1056,36 @@ namespace ScheduleIDevelopementEnvironementManager
 
         private async void BtnCreateEnvironment_Click(object? sender, EventArgs e)
         {
+            // Check if we're in setup mode (no status label)
+            bool isSetupMode = lblStatus == null;
+            
+            if (isSetupMode)
+            {
+                // In setup mode, show the Create Managed Environment form
+                try
+                {
+                    _logger.LogInformation("Setup mode: showing Create Managed Environment form");
+                    ShowCreateManagedEnvironmentForm();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error showing Create Managed Environment form");
+                    MessageBox.Show($"Error showing Create Managed Environment form: {ex.Message}", "Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                return;
+            }
+            
             try
             {
                 btnCreateEnvironment!.Enabled = false;
-                progressBar!.Visible = true;
-                progressBar!.Value = 0;
                 lblStatus!.Text = "Creating managed environment...";
                 lblStatus!.ForeColor = Color.Blue;
 
-                await Task.Run(() => CreateManagedEnvironment());
+                await CreateManagedEnvironmentWithProgressAsync();
 
                 lblStatus!.Text = "Managed environment created successfully!";
                 lblStatus!.ForeColor = Color.Green;
-                progressBar!.Value = 100;
                 
                 // Save final configuration after successful environment creation
                 SaveConfigurationAsync();
@@ -850,11 +1104,25 @@ namespace ScheduleIDevelopementEnvironementManager
             finally
             {
                 btnCreateEnvironment!.Enabled = true;
-                progressBar!.Visible = false;
             }
         }
 
-        private void CreateManagedEnvironment()
+        private void BtnSetupEnvironment_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                _logger.LogInformation("Setup button clicked, showing Create Managed Environment form");
+                ShowCreateManagedEnvironmentForm();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error showing Create Managed Environment form");
+                MessageBox.Show($"Error showing Create Managed Environment form: {ex.Message}", "Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async Task CreateManagedEnvironmentWithProgressAsync()
         {
             try
             {
@@ -864,36 +1132,73 @@ namespace ScheduleIDevelopementEnvironementManager
                     Directory.CreateDirectory(_config.ManagedEnvironmentPath);
                 }
 
-                // Create branch directories
-                foreach (var branch in _config.SelectedBranches)
+                // Get current branch from Steam
+                var currentBranch = _steamService.GetCurrentBranchFromGamePath(_config.GameInstallPath);
+                if (string.IsNullOrEmpty(currentBranch))
                 {
-                    var branchPath = Path.Combine(_config.ManagedEnvironmentPath, branch);
-                    if (!Directory.Exists(branchPath))
+                    currentBranch = "main-branch"; // Default fallback
+                }
+
+                _logger.LogInformation("Starting managed environment creation. Current branch: {CurrentBranch}", currentBranch);
+
+                // Process each selected branch
+                for (int i = 0; i < _config.SelectedBranches.Count; i++)
+                {
+                    var targetBranch = _config.SelectedBranches[i];
+                    
+                    // Skip if this branch is already the current one
+                    if (targetBranch == currentBranch)
                     {
-                        Directory.CreateDirectory(branchPath);
+                        _logger.LogInformation("Skipping {Branch} - already current branch", targetBranch);
+                        continue;
                     }
 
-                    // Copy game files to branch directory (this is a simplified copy)
-                    var sourceFiles = Directory.GetFiles(_config.GameInstallPath, "*.*", SearchOption.AllDirectories);
-                    var totalFiles = sourceFiles.Length;
+                    // Show progress form for this branch
+                    using var progressForm = new CopyProgressForm();
+                    progressForm.Show();
                     
-                    for (int i = 0; i < totalFiles; i++)
+                    try
                     {
-                        var sourceFile = sourceFiles[i];
-                        var relativePath = Path.GetRelativePath(_config.GameInstallPath, sourceFile);
-                        var targetFile = Path.Combine(branchPath, relativePath);
-                        var targetDir = Path.GetDirectoryName(targetFile);
+                        // Copy current game state to target branch folder
+                        await CopyGameToBranchAsync(targetBranch, progressForm);
                         
-                        if (!string.IsNullOrEmpty(targetDir) && !Directory.Exists(targetDir))
+                        // Close progress form
+                        progressForm.SetCopyComplete();
+                        progressForm.Close();
+                        
+                        // If this isn't the last branch, prompt user to switch
+                        if (i < _config.SelectedBranches.Count - 1)
                         {
-                            Directory.CreateDirectory(targetDir);
+                            var nextBranch = _config.SelectedBranches[i + 1];
+                            
+                            // Show branch switch prompt
+                            using var switchPrompt = new BranchSwitchPromptForm(currentBranch, nextBranch);
+                            var result = switchPrompt.ShowDialog();
+                            
+                            if (result == DialogResult.Cancel)
+                            {
+                                _logger.LogInformation("User cancelled branch switch operation");
+                                break;
+                            }
+                            
+                            // Wait for user to actually switch the branch
+                            var switchSuccess = await _steamService.WaitForBranchSwitchAsync(nextBranch, _config.GameInstallPath);
+                            
+                            if (!switchSuccess)
+                            {
+                                throw new Exception($"Failed to detect branch switch to {nextBranch} within timeout period");
+                            }
+                            
+                            // Update current branch for next iteration
+                            currentBranch = nextBranch;
+                            _logger.LogInformation("Successfully switched to branch: {Branch}", currentBranch);
                         }
-                        
-                        File.Copy(sourceFile, targetFile, true);
-                        
-                        // Update progress
-                        var progress = (int)((i + 1) * 100.0 / totalFiles);
-                        this.Invoke(() => progressBar!.Value = progress);
+                    }
+                    catch (Exception ex)
+                    {
+                        progressForm.SetCopyFailed(ex.Message);
+                        progressForm.Close();
+                        throw;
                     }
                 }
 
@@ -902,6 +1207,70 @@ namespace ScheduleIDevelopementEnvironementManager
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating managed environment");
+                throw;
+            }
+        }
+
+        private async Task CopyGameToBranchAsync(string branchName, CopyProgressForm progressForm)
+        {
+            try
+            {
+                progressForm.UpdateStatus($"Copying game files to {branchName}...");
+                progressForm.LogMessage($"Starting copy operation to {branchName}");
+
+                var branchPath = Path.Combine(_config.ManagedEnvironmentPath, branchName);
+                
+                // Create branch directory if it doesn't exist
+                if (!Directory.Exists(branchPath))
+                {
+                    Directory.CreateDirectory(branchPath);
+                    progressForm.LogMessage($"Created directory: {branchPath}");
+                }
+
+                // Get all source files
+                var sourceFiles = Directory.GetFiles(_config.GameInstallPath, "*.*", SearchOption.AllDirectories);
+                var totalFiles = sourceFiles.Length;
+                
+                progressForm.LogMessage($"Found {totalFiles} files to copy");
+                
+                // Copy files with progress updates
+                for (int i = 0; i < totalFiles; i++)
+                {
+                    var sourceFile = sourceFiles[i];
+                    var relativePath = Path.GetRelativePath(_config.GameInstallPath, sourceFile);
+                    var targetFile = Path.Combine(branchPath, relativePath);
+                    var targetDir = Path.GetDirectoryName(targetFile);
+                    
+                    // Create target directory if needed
+                    if (!string.IsNullOrEmpty(targetDir) && !Directory.Exists(targetDir))
+                    {
+                        Directory.CreateDirectory(targetDir);
+                        progressForm.LogMessage($"Created directory: {targetDir}");
+                    }
+                    
+                    // Copy file
+                    File.Copy(sourceFile, targetFile, true);
+                    
+                    // Update progress
+                    var progress = (int)((i + 1) * 100.0 / totalFiles);
+                    progressForm.UpdateProgress(progress);
+                    
+                    // Log every 100 files or for the last file
+                    if ((i + 1) % 100 == 0 || i == totalFiles - 1)
+                    {
+                        progressForm.LogMessage($"Copied {i + 1}/{totalFiles} files ({progress}%)");
+                    }
+                    
+                    // Small delay to allow UI updates
+                    await Task.Delay(1);
+                }
+                
+                progressForm.LogMessage($"Successfully copied {totalFiles} files to {branchName}");
+                progressForm.UpdateStatus($"Copy to {branchName} completed successfully!");
+            }
+            catch (Exception ex)
+            {
+                progressForm.LogMessage($"Error copying to {branchName}: {ex.Message}");
                 throw;
             }
         }
@@ -931,6 +1300,55 @@ namespace ScheduleIDevelopementEnvironementManager
         private void BtnExit_Click(object? sender, EventArgs e)
         {
             this.Close();
+        }
+
+        private void StartSetupProcess()
+        {
+            try
+            {
+                _logger.LogInformation("Starting setup process: switching to normal UI for Steam library selection");
+                
+                // Switch to normal UI first
+                SwitchToNormalUI();
+                
+                // Now start the Steam library selection process
+                _logger.LogInformation("Setup process: initiating Steam library selection");
+                LoadSteamInformation();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in setup process");
+                MessageBox.Show($"Error in setup process: {ex.Message}", "Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void SwitchToNormalUI()
+        {
+            try
+            {
+                _logger.LogInformation("Switching from setup UI to normal UI");
+                
+                // Clear setup controls and show normal UI
+                this.Controls.Clear();
+                
+                // Reset form properties
+                this.Text = "Schedule I Development Environment Manager";
+                this.Size = new Size(800, 700);
+                
+                // Create and show normal UI
+                CreateControls();
+                SetupEventHandlers();
+                
+                // Load the configuration (but not Steam information yet - that will be handled by StartSetupProcess)
+                LoadConfiguration();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error switching to normal UI");
+                MessageBox.Show($"Error switching to normal UI: {ex.Message}", "Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         // Control declarations - made nullable to fix warnings
