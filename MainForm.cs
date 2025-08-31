@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ScheduleIDevelopementEnvironementManager.Models;
 using ScheduleIDevelopementEnvironementManager.Services;
+using ScheduleIDevelopementEnvironementManager.UI;
 using System.ComponentModel;
 using System.IO;
 using System.Text.Json;
@@ -39,9 +40,15 @@ namespace ScheduleIDevelopementEnvironementManager
             _config = new DevEnvironmentConfig();
             _availableGames = new List<SteamGameInfo>();
             
-            InitializeForm();
+            // Initialize diagnostics system
+            FormDiagnostics.Initialize(_logger);
+            FormDiagnostics.LogFormInitialization("MainForm");
+            
+            InitializeModernForm();
             // Since Program.cs now handles configuration checking, MainForm is only shown when setup is needed
-            ShowSetupUI();
+            ShowModernSetupUI();
+            
+            FormDiagnostics.LogFormLoadComplete("MainForm");
         }
 
 
@@ -84,117 +91,287 @@ namespace ScheduleIDevelopementEnvironementManager
             }
         }
 
-        private void ShowSetupUI()
+        private void ShowModernSetupUI()
         {
+            FormDiagnostics.StartPerformanceTracking("ShowModernSetupUI");
+            FormDiagnostics.LogUserInteraction("ShowSetupUI", "MainForm", "Displaying modern setup interface");
+            
             // Clear existing controls
             this.Controls.Clear();
             
-            // Set up the setup UI
-            this.Text = "Schedule I Development Environment Manager - Setup";
-            this.Size = new Size(600, 400);
+            // Set up the modern setup UI
+            this.Text = "🚀 Schedule I Development Manager - Welcome";
+            this.Size = new Size(800, 650);  // Increased to accommodate GitHub info card
             this.StartPosition = FormStartPosition.CenterScreen;
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
 
-            // Apply dark theme to the form
-            ApplyDarkTheme();
-
-            CreateSetupControls();
-            SetupSetupEventHandlers();
+            CreateModernSetupLayout();
+            SetupModernSetupEventHandlers();
+            
+            FormDiagnostics.EndPerformanceTracking("ShowModernSetupUI");
         }
 
-        private void CreateSetupControls()
+        private void CreateModernSetupLayout()
         {
-            // Title
-            var lblTitle = new Label
-            {
-                Text = "No Development Environment Detected!",
-                Location = new Point(50, 50),
-                Size = new Size(500, 35), // Increased height from 30 to 35 to prevent text cutoff
-                Font = new Font(this.Font.FontFamily, 16, FontStyle.Bold),
-                ForeColor = Color.Red,
-                TextAlign = ContentAlignment.MiddleCenter
+            // Main container - increased size for better spacing
+            var mainPanel = new Panel();
+            mainPanel.Size = new Size(750, 570);
+            mainPanel.Location = new Point(10, 10);
+            mainPanel.BackColor = ModernUITheme.Colors.BackgroundPrimary;
+
+            // Header section - increased height for better text spacing
+            var headerPanel = ModernControls.CreateSectionPanel("", new Size(750, 120));
+            headerPanel.Location = new Point(0, 0);
+            headerPanel.BackColor = ModernUITheme.Colors.BackgroundSecondary;
+
+            var titleLabel = ModernControls.CreateHeadingLabel("🚀 Schedule I Development Manager", true);
+            titleLabel.Location = new Point(15, 15);
+            titleLabel.Size = new Size(720, 40);  // Much wider to prevent cutoff
+            titleLabel.TextAlign = ContentAlignment.MiddleCenter;
+            titleLabel.ForeColor = ModernUITheme.Colors.AccentPrimary;
+
+            var subtitleLabel = ModernControls.CreateStatusLabel("No development environment detected. Set up your environment to get started.", ModernUITheme.Colors.AccentWarning);
+            subtitleLabel.Location = new Point(15, 65);
+            subtitleLabel.Size = new Size(720, 35);  // Increased height for proper text wrapping
+            subtitleLabel.TextAlign = ContentAlignment.MiddleCenter;
+
+            headerPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel });
+
+            // Project information card - custom card with proper title sizing
+            var projectCard = new Panel();
+            projectCard.Size = new Size(700, 300);  // Slightly taller to accommodate title properly
+            projectCard.Location = new Point(25, 140);
+            projectCard.BackColor = ModernUITheme.Colors.BackgroundTertiary;
+            projectCard.BorderStyle = BorderStyle.FixedSingle;
+            
+            // Custom title label with proper sizing
+            var cardTitleLabel = ModernControls.CreateHeadingLabel("Managed Environment Creation Wizard", false);
+            cardTitleLabel.Location = new Point(15, 15);
+            cardTitleLabel.Size = new Size(670, 30); // Full width minus margins
+            cardTitleLabel.ForeColor = ModernUITheme.Colors.AccentPrimary;
+            cardTitleLabel.TextAlign = ContentAlignment.MiddleCenter;
+            
+            // Version and author info - centered vertically with more space from title
+            var versionLabel = ModernControls.CreateFieldLabel("🏷️ Version: 0.5.0 ALPHA");
+            versionLabel.Location = new Point(15, 75);
+            versionLabel.Size = new Size(320, 25);
+            
+            var authorLabel = ModernControls.CreateFieldLabel("👤 Author: Schedule I Development Team");
+            authorLabel.Location = new Point(350, 75);
+            authorLabel.Size = new Size(330, 25);
+            
+            // Description - centered vertically
+            var descLabel = ModernControls.CreateStatusLabel(
+                "🎯 Create isolated development environments for different game branches. " +
+                "Safely mod and test different versions without affecting your main installation.",
+                ModernUITheme.Colors.TextSecondary);
+            descLabel.Location = new Point(15, 105);
+            descLabel.Size = new Size(670, 50);
+            
+            // GitHub links - centered vertically
+            var releasesLink = new LinkLabel();
+            releasesLink.Text = "📋 View Releases";
+            releasesLink.Location = new Point(15, 170);
+            releasesLink.Size = new Size(150, 25);
+            releasesLink.LinkColor = ModernUITheme.Colors.AccentPrimary;
+            releasesLink.VisitedLinkColor = ModernUITheme.Colors.AccentPrimary;
+            releasesLink.ActiveLinkColor = ModernUITheme.Colors.AccentSuccess;
+            releasesLink.Font = ModernUITheme.Typography.BodyMedium;
+            releasesLink.BackColor = Color.Transparent;
+            releasesLink.LinkClicked += (s, e) => {
+                try {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "https://github.com/SirTidez/Schedule-I-Developement-Environement-Manager/releases",
+                        UseShellExecute = true
+                    });
+                } catch (Exception ex) {
+                    _logger.LogError(ex, "Error opening releases link");
+                }
             };
-
-            // Description
-            var lblDescription = new Label
-            {
-                Text = "Click 'Setup Environment' to configure your development environment, or 'Load Configuration' to use an existing configuration file.",
-                Location = new Point(50, 100),
-                Size = new Size(500, 40),
-                Font = new Font(this.Font.FontFamily, 10),
-                TextAlign = ContentAlignment.MiddleCenter
+            
+            var readmeLink = new LinkLabel();
+            readmeLink.Text = "📚 View README";
+            readmeLink.Location = new Point(180, 170);
+            readmeLink.Size = new Size(150, 25);
+            readmeLink.LinkColor = ModernUITheme.Colors.AccentPrimary;
+            readmeLink.VisitedLinkColor = ModernUITheme.Colors.AccentPrimary;
+            readmeLink.ActiveLinkColor = ModernUITheme.Colors.AccentSuccess;
+            readmeLink.Font = ModernUITheme.Typography.BodyMedium;
+            readmeLink.BackColor = Color.Transparent;
+            readmeLink.LinkClicked += (s, e) => {
+                try {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "https://github.com/SirTidez/Schedule-I-Developement-Environement-Manager/blob/main/README.md",
+                        UseShellExecute = true
+                    });
+                } catch (Exception ex) {
+                    _logger.LogError(ex, "Error opening documentation link");
+                }
             };
-
-            // Create Environment Button
-            btnCreateEnvironment = new Button
-            {
-                Text = "Setup Environment",
-                Location = new Point(150, 180),
-                Size = new Size(150, 40),
-                Font = new Font(this.Font.FontFamily, 12, FontStyle.Bold)
+            
+            var issuesLink = new LinkLabel();
+            issuesLink.Text = "🐛 Report Issues";
+            issuesLink.Location = new Point(345, 170);
+            issuesLink.Size = new Size(150, 25);
+            issuesLink.LinkColor = ModernUITheme.Colors.AccentPrimary;
+            issuesLink.VisitedLinkColor = ModernUITheme.Colors.AccentPrimary;
+            issuesLink.ActiveLinkColor = ModernUITheme.Colors.AccentSuccess;
+            issuesLink.Font = ModernUITheme.Typography.BodyMedium;
+            issuesLink.BackColor = Color.Transparent;
+            issuesLink.LinkClicked += (s, e) => {
+                try {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "https://github.com/SirTidez/Schedule-I-Developement-Environement-Manager/issues",
+                        UseShellExecute = true
+                    });
+                } catch (Exception ex) {
+                    _logger.LogError(ex, "Error opening issues link");
+                }
             };
-
-            // Load Configuration Button
-            var btnLoadConfig = new Button
-            {
-                Text = "Load Configuration",
-                Location = new Point(320, 180),
-                Size = new Size(150, 40),
-                Font = new Font(this.Font.FontFamily, 12, FontStyle.Bold)
+            
+            var repoLink = new LinkLabel();
+            repoLink.Text = "🔗 View Source Code";
+            repoLink.Location = new Point(510, 170);
+            repoLink.Size = new Size(170, 25);
+            repoLink.LinkColor = ModernUITheme.Colors.AccentPrimary;
+            repoLink.VisitedLinkColor = ModernUITheme.Colors.AccentPrimary;
+            repoLink.ActiveLinkColor = ModernUITheme.Colors.AccentSuccess;
+            repoLink.Font = ModernUITheme.Typography.BodyMedium;
+            repoLink.BackColor = Color.Transparent;
+            repoLink.LinkClicked += (s, e) => {
+                try {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "https://github.com/SirTidez/Schedule-I-Developement-Environement-Manager",
+                        UseShellExecute = true
+                    });
+                } catch (Exception ex) {
+                    _logger.LogError(ex, "Error opening repository link");
+                }
             };
-
-            // Exit Button
-            btnExit = new Button
-            {
-                Text = "Exit",
-                Location = new Point(250, 250),
-                Size = new Size(100, 35)
-            };
-
-            // Apply dark theme to all controls
-            ApplyDarkThemeToControl(lblTitle);
-            ApplyDarkThemeToControl(lblDescription);
-            ApplyDarkThemeToControl(btnCreateEnvironment);
-            ApplyDarkThemeToControl(btnLoadConfig);
-            ApplyDarkThemeToControl(btnExit);
-
-            // Add controls to form
-            this.Controls.AddRange(new Control[]
-            {
-                lblTitle, lblDescription, btnCreateEnvironment, btnLoadConfig, btnExit
+            
+            // Additional project information - centered vertically
+            var buildInfoLabel = ModernControls.CreateFieldLabel("🏗️ Built with: .NET 8.0 Windows Forms");
+            buildInfoLabel.Location = new Point(15, 205);
+            buildInfoLabel.Size = new Size(330, 25);
+            
+            var licenseLabel = ModernControls.CreateFieldLabel("📜 License: Open Source");
+            licenseLabel.Location = new Point(350, 205);
+            licenseLabel.Size = new Size(330, 25);
+            
+            var lastUpdatedLabel = ModernControls.CreateStatusLabel("🕒 Development Status: Active", ModernUITheme.Colors.AccentSuccess);
+            lastUpdatedLabel.Location = new Point(15, 235);
+            lastUpdatedLabel.Size = new Size(330, 25);
+            
+            var supportLabel = ModernControls.CreateStatusLabel("🤝 Community Support: Available via GitHub Issues", ModernUITheme.Colors.TextSecondary);
+            supportLabel.Location = new Point(15, 260);
+            supportLabel.Size = new Size(670, 20);
+            
+            projectCard.Controls.AddRange(new Control[] { 
+                cardTitleLabel, versionLabel, authorLabel, descLabel, releasesLink, readmeLink, issuesLink, repoLink,
+                buildInfoLabel, licenseLabel, lastUpdatedLabel, supportLabel
             });
+
+            // Action buttons panel - moved closer to bottom with reduced height
+            var actionPanel = new Panel();
+            actionPanel.Size = new Size(750, 115);
+            actionPanel.Location = new Point(0, 450);
+            actionPanel.BackColor = ModernUITheme.Colors.BackgroundSecondary;
+
+            btnCreateEnvironment = ModernControls.CreateActionButton("🔧 Setup New Environment", ModernUITheme.ButtonStyle.Primary);
+            btnCreateEnvironment.Location = new Point(90, 20);  // Centered: 15+75px offset
+            btnCreateEnvironment.Size = new Size(220, 50);      // Larger buttons
+
+            var btnLoadConfig = ModernControls.CreateActionButton("📁 Load Configuration", ModernUITheme.ButtonStyle.Secondary);
+            btnLoadConfig.Location = new Point(325, 20);        // Centered: 250+75px offset
+            btnLoadConfig.Size = new Size(200, 50);
+
+            btnExit = ModernControls.CreateActionButton("❌ Exit", ModernUITheme.ButtonStyle.Danger);
+            btnExit.Location = new Point(540, 20);              // Centered: 465+75px offset
+            btnExit.Size = new Size(120, 50);
+
+            var helpLabel = ModernControls.CreateStatusLabel("💡 Tip: Choose 'Setup New Environment' if this is your first time using the tool.", ModernUITheme.Colors.TextMuted);
+            helpLabel.Location = new Point(90, 75);  // Moved up 10px due to shorter panel
+            helpLabel.Size = new Size(570, 40);      // Adjusted width: 720-150px for centering
+
+            actionPanel.Controls.AddRange(new Control[] { btnCreateEnvironment, btnLoadConfig, btnExit, helpLabel });
+
+            // Add all panels to main panel
+            mainPanel.Controls.AddRange(new Control[] { headerPanel, projectCard, actionPanel });
+
+            // Add main panel to form
+            this.Controls.Add(mainPanel);
+
+            FormDiagnostics.LogBulkThemeApplication("MainForm_Setup", 8, 8);
         }
 
-        private void SetupSetupEventHandlers()
+        private void SetupModernSetupEventHandlers()
         {
-            btnCreateEnvironment!.Click += BtnSetupEnvironment_Click;
-            btnExit!.Click += BtnExit_Click;
+            FormDiagnostics.LogUserInteraction("SetupEventHandlers", "MainForm_Setup");
+            
+            if (btnCreateEnvironment != null)
+            {
+                btnCreateEnvironment.Click += BtnSetupEnvironment_Click;
+                FormDiagnostics.LogUserInteraction("EventHandlerAttached", "SetupEnvironmentButton");
+            }
+            
+            if (btnExit != null)
+            {
+                btnExit.Click += BtnExit_Click;
+                FormDiagnostics.LogUserInteraction("EventHandlerAttached", "ExitButton");
+            }
             
             // Find the Load Configuration button and set up its event handler
-            var btnLoadConfig = this.Controls.OfType<Button>().FirstOrDefault(b => b.Text == "Load Configuration");
+            var btnLoadConfig = this.Controls.Cast<Control>()
+                .SelectMany(c => c.Controls.Cast<Control>())
+                .SelectMany(c => c.Controls.Cast<Control>())
+                .OfType<Button>()
+                .FirstOrDefault(b => b.Text.Contains("Load Configuration"));
+            
             if (btnLoadConfig != null)
             {
                 btnLoadConfig.Click += BtnLoadConfiguration_Click;
+                FormDiagnostics.LogUserInteraction("EventHandlerAttached", "LoadConfigurationButton");
             }
         }
 
         private void BtnLoadConfiguration_Click(object? sender, EventArgs e)
         {
+            FormDiagnostics.LogUserInteraction("LoadConfigurationClick", "MainForm", "User clicked Load Configuration");
+            
             try
             {
                 _logger.LogInformation("Load Configuration button clicked, showing configuration window");
                 
-                // TODO: Show the configuration window (placeholder for now)
-                MessageBox.Show("Configuration window functionality will be implemented later.", 
-                              "Coming Soon", 
-                              MessageBoxButtons.OK, 
-                              MessageBoxIcon.Information);
+                // Open file dialog to load configuration
+                using var openFileDialog = new OpenFileDialog
+                {
+                    Title = "Load Development Environment Configuration",
+                    Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+                    FilterIndex = 1,
+                    RestoreDirectory = true,
+                    InitialDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TVGS", "Schedule I", "Developer Env", "config")
+                };
+
+                if (openFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    // TODO: Implement configuration loading from file
+                    FormDiagnostics.LogUserInteraction("ConfigurationFileSelected", "MainForm", openFileDialog.FileName);
+                    MessageBox.Show("Configuration loading will be implemented in a future update.", 
+                                  "Feature Coming Soon", 
+                                  MessageBoxButtons.OK, 
+                                  MessageBoxIcon.Information);
+                }
             }
             catch (Exception ex)
             {
+                FormDiagnostics.LogUserInteraction("LoadConfigurationError", "MainForm", ex.Message);
                 _logger.LogError(ex, "Error handling Load Configuration button click");
-                MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Error loading configuration: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -240,22 +417,22 @@ namespace ScheduleIDevelopementEnvironementManager
             return null;
         }
 
-        private void InitializeForm()
+        private void InitializeModernForm()
         {
-            this.Text = "Schedule I Development Environment Manager";
-            this.Size = new Size(800, 700);
+            FormDiagnostics.StartPerformanceTracking("MainForm_Initialization");
+            
+            this.Text = "🚀 Schedule I Development Manager - Environment Setup";
+            this.Size = new Size(900, 750);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
+            this.MinimizeBox = true;
+            this.BackColor = ModernUITheme.Colors.BackgroundPrimary;
             
             // Load the icon using the helper method
             this.Icon = LoadApplicationIcon();
-
-            // Apply dark theme
-            ApplyDarkTheme();
-
-            CreateControls();
-            SetupEventHandlers();
+            
+            FormDiagnostics.EndPerformanceTracking("MainForm_Initialization");
         }
 
         private async void LoadConfiguration()
@@ -320,254 +497,6 @@ namespace ScheduleIDevelopementEnvironementManager
             }
         }
 
-        private void CreateControls()
-        {
-            // Steam Library Section
-            var lblSteamLibrary = new Label
-            {
-                Text = "Steam Library Path:",
-                Location = new Point(20, 20),
-                Size = new Size(180, 25), // Increased width from 150 to 180 and height from 20 to 25
-                Font = new Font(this.Font.FontFamily, 10, FontStyle.Bold)
-            };
-
-            txtSteamLibrary = new TextBox
-            {
-                Location = new Point(20, 48), // Reduced gap from label (20+25+3=48)
-                Size = new Size(500, 23),
-                ReadOnly = true,
-                Text = "C:\\Program Files (x86)\\Steam\\steamapps" // Default placeholder
-            };
-
-            btnBrowseSteamLibrary = new Button
-            {
-                Text = "Browse...",
-                Location = new Point(530, 48), // Aligned with textbox top
-                Size = new Size(80, 29), // Match textbox height for perfect alignment
-                TextAlign = ContentAlignment.MiddleCenter
-            };
-
-            // Game Installation Section
-            var lblGameInstall = new Label
-            {
-                Text = "Schedule I Game Path:",
-                Location = new Point(20, 80),
-                Size = new Size(180, 27), // Increased width and height for better text display
-                Font = new Font(this.Font.FontFamily, 10, FontStyle.Bold)
-            };
-
-            txtGameInstall = new TextBox
-            {
-                Location = new Point(20, 108), // Reduced gap from label (80+25+3=108)
-                Size = new Size(500, 23),
-                ReadOnly = true
-            };
-
-            btnBrowseGameInstall = new Button
-            {
-                Text = "Browse...",
-                Location = new Point(530, 108), // Aligned with textbox top
-                Size = new Size(80, 29), // Match textbox height for perfect alignment
-                TextAlign = ContentAlignment.MiddleCenter
-            };
-
-            // Managed Environment Section
-            var lblManagedEnv = new Label
-            {
-                Text = "Managed Environment Path:",
-                Location = new Point(20, 140),
-                Size = new Size(200, 25), // Increased width from 150 to 200 and height from 20 to 25
-                Font = new Font(this.Font.FontFamily, 10, FontStyle.Bold)
-            };
-
-            txtManagedEnv = new TextBox
-            {
-                Location = new Point(20, 168), // Reduced gap from label (140+25+3=168)
-                Size = new Size(500, 25),
-                ReadOnly = true
-            };
-
-            btnBrowseManagedEnv = new Button
-            {
-                Text = "Browse...",
-                Location = new Point(530, 168), // Aligned with textbox top
-                Size = new Size(80, 29), // Match textbox height for perfect alignment
-                TextAlign = ContentAlignment.MiddleCenter
-            };
-
-            // Current Branch Detection Section
-            var lblCurrentBranch = new Label
-            {
-                Text = "Currently Installed Branch:",
-                Location = new Point(20, 200),
-                Size = new Size(200, 25), // Increased width and height for better text display
-                Font = new Font(this.Font.FontFamily, 10, FontStyle.Bold)
-            };
-
-            cboCurrentBranch = new ComboBox
-            {
-                Location = new Point(20, 230), // Moved down from 225 to 230 for better spacing
-                Size = new Size(300, 23),
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
-
-            // Populate the branch dropdown
-            cboCurrentBranch.Items.AddRange(DevEnvironmentConfig.AvailableBranches.ToArray());
-
-            // Branch Selection Section
-            var lblBranches = new Label
-            {
-                Text = "Select Branches to Manage:",
-                Location = new Point(20, 260),
-                Size = new Size(220, 25), // Increased width from 200 to 220 and height from 20 to 25
-                Font = new Font(this.Font.FontFamily, 10, FontStyle.Bold)
-            };
-
-            chkMainBranch = new CheckBox
-            {
-                Text = "Main",
-                Location = new Point(20, 290), // Moved down from 285 to 290 for better spacing
-                Size = new Size(120, 20)
-            };
-
-            chkBetaBranch = new CheckBox
-            {
-                Text = "Beta",
-                Location = new Point(150, 290), // Moved down from 285 to 290 for better spacing
-                Size = new Size(120, 20)
-            };
-
-            chkAlternateBranch = new CheckBox
-            {
-                Text = "Alternate",
-                Location = new Point(280, 290), // Moved down from 285 to 290 for better spacing
-                Size = new Size(120, 20)
-            };
-
-            chkAlternateBetaBranch = new CheckBox
-            {
-                Text = "Alternate Beta",
-                Location = new Point(410, 290), // Moved down from 285 to 290 for better spacing
-                Size = new Size(150, 20)
-            };
-
-            // Status and Progress
-            lblStatus = new Label
-            {
-                Text = "Ready",
-                Location = new Point(20, 325), // Moved up from 330 to 325 to maintain good spacing
-                Size = new Size(600, 25), // Increased height from 20 to 25 for better text display
-                ForeColor = Color.Green
-            };
-
-            // Configuration Info Display
-            var lblConfigInfo = new Label
-            {
-                Text = "Configuration Information:",
-                Location = new Point(20, 360),
-                Size = new Size(200, 25), // Increased height from 20 to 25 for better text display
-                Font = new Font(this.Font.FontFamily, 9, FontStyle.Bold)
-            };
-
-            var txtConfigInfo = new TextBox
-            {
-                Location = new Point(20, 390), // Moved down from 385 to 390 for better spacing
-                Size = new Size(600, 60),
-                Multiline = true,
-                ReadOnly = true,
-                ScrollBars = ScrollBars.Vertical,
-                Font = new Font(this.Font.FontFamily, 8)
-            };
-
-            // Store reference to config info textbox
-            this.txtConfigInfo = txtConfigInfo;
-
-            progressBar = new ProgressBar
-            {
-                Location = new Point(20, 460), // Moved down from 455 to 460 for better spacing
-                Size = new Size(600, 23),
-                Visible = false
-            };
-
-            // Action Buttons
-            btnCreateEnvironment = new Button
-            {
-                Text = "Create Environment",
-                Location = new Point(20, 400),
-                Size = new Size(200, 35),
-                Font = new Font(this.Font.FontFamily, 10, FontStyle.Bold),
-                Enabled = false
-            };
-
-            btnRefresh = new Button
-            {
-                Text = "Refresh Steam Info",
-                Location = new Point(240, 400),
-                Size = new Size(150, 35)
-            };
-
-            btnExit = new Button
-            {
-                Text = "Exit",
-                Location = new Point(410, 400),
-                Size = new Size(80, 35)
-            };
-
-            // Apply dark theme to all controls
-            ApplyDarkThemeToControl(lblSteamLibrary);
-            ApplyDarkThemeToControl(txtSteamLibrary);
-            ApplyDarkThemeToControl(btnBrowseSteamLibrary);
-            ApplyDarkThemeToControl(lblGameInstall);
-            ApplyDarkThemeToControl(txtGameInstall);
-            ApplyDarkThemeToControl(btnBrowseGameInstall);
-            ApplyDarkThemeToControl(lblManagedEnv);
-            ApplyDarkThemeToControl(txtManagedEnv);
-            ApplyDarkThemeToControl(btnBrowseManagedEnv);
-            ApplyDarkThemeToControl(lblCurrentBranch);
-            ApplyDarkThemeToControl(cboCurrentBranch);
-            ApplyDarkThemeToControl(lblBranches);
-            ApplyDarkThemeToControl(chkMainBranch);
-            ApplyDarkThemeToControl(chkBetaBranch);
-            ApplyDarkThemeToControl(chkAlternateBranch);
-            ApplyDarkThemeToControl(chkAlternateBetaBranch);
-            ApplyDarkThemeToControl(lblStatus);
-            ApplyDarkThemeToControl(lblConfigInfo);
-            ApplyDarkThemeToControl(txtConfigInfo);
-            ApplyDarkThemeToControl(progressBar);
-            ApplyDarkThemeToControl(btnCreateEnvironment);
-            ApplyDarkThemeToControl(btnRefresh);
-            ApplyDarkThemeToControl(btnExit);
-
-            // Add controls to form
-            this.Controls.AddRange(new Control[]
-            {
-                lblSteamLibrary, txtSteamLibrary, btnBrowseSteamLibrary,
-                lblGameInstall, txtGameInstall, btnBrowseGameInstall,
-                lblManagedEnv, txtManagedEnv, btnBrowseManagedEnv,
-                lblCurrentBranch, cboCurrentBranch,
-                lblBranches, chkMainBranch, chkBetaBranch, chkAlternateBranch, chkAlternateBetaBranch,
-                lblStatus, progressBar, btnCreateEnvironment, btnRefresh, btnExit
-            });
-        }
-
-        private void SetupEventHandlers()
-        {
-            btnBrowseSteamLibrary!.Click += BtnBrowseSteamLibrary_Click;
-            btnBrowseGameInstall!.Click += BtnBrowseGameInstall_Click;
-            btnBrowseManagedEnv!.Click += BtnBrowseManagedEnv_Click;
-            btnCreateEnvironment!.Click += BtnCreateEnvironment_Click;
-            btnRefresh!.Click += BtnRefresh_Click;
-            btnExit!.Click += BtnExit_Click;
-
-            // Branch selection change handlers
-            chkMainBranch!.CheckedChanged += BranchSelection_Changed;
-            chkBetaBranch!.CheckedChanged += BranchSelection_Changed;
-            chkAlternateBranch!.CheckedChanged += BranchSelection_Changed;
-            chkAlternateBetaBranch!.CheckedChanged += BranchSelection_Changed;
-            
-            // Current branch dropdown change handler
-            cboCurrentBranch!.SelectedIndexChanged += CurrentBranch_SelectionChanged;
-        }
 
         private void LoadSteamInformation()
         {
@@ -926,9 +855,17 @@ namespace ScheduleIDevelopementEnvironementManager
                 configInfo.AppendLine("Branch Build IDs:");
                 foreach (var branch in DevEnvironmentConfig.AvailableBranches)
                 {
-                    var buildId = _config.GetBuildIdForBranch(branch);
+                    var buildInfo = _config.GetBuildInfoForBranch(branch);
                     var status = _config.SelectedBranches.Contains(branch) ? "[SELECTED]" : "[NOT SELECTED]";
-                    configInfo.AppendLine($"  {branch}: {buildId} {status}");
+                    
+                    if (buildInfo != null && !string.IsNullOrEmpty(buildInfo.BuildId))
+                    {
+                        configInfo.AppendLine($"  {branch}: {buildInfo.BuildId} (Updated: {buildInfo.UpdatedTime:yyyy-MM-dd HH:mm:ss}) {status}");
+                    }
+                    else
+                    {
+                        configInfo.AppendLine($"  {branch}: [No Build ID] {status}");
+                    }
                 }
 
                 // Add logging information
@@ -1160,16 +1097,21 @@ namespace ScheduleIDevelopementEnvironementManager
 
         private void BtnSetupEnvironment_Click(object? sender, EventArgs e)
         {
+            FormDiagnostics.LogUserInteraction("SetupEnvironmentClick", "MainForm", "User clicked Setup Environment");
+            
             try
             {
                 _logger.LogInformation("Setup button clicked, switching to full configuration interface");
-                SwitchToNormalUI();
+                FormDiagnostics.LogFormNavigation("MainForm_Setup", "MainForm_Configuration", "User initiated setup");
+                
+                SwitchToModernConfigurationUI();
                 
                 // Automatically start loading Steam information
                 LoadSteamInformation();
             }
             catch (Exception ex)
             {
+                FormDiagnostics.LogUserInteraction("SetupEnvironmentError", "MainForm", ex.Message);
                 _logger.LogError(ex, "Error switching to configuration interface");
                 MessageBox.Show($"Error switching to configuration interface: {ex.Message}", "Error", 
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -1415,8 +1357,8 @@ namespace ScheduleIDevelopementEnvironementManager
             {
                 _logger.LogInformation("Starting setup process: switching to normal UI for Steam library selection");
                 
-                // Switch to normal UI first
-                SwitchToNormalUI();
+                // Switch to modern configuration UI first
+                SwitchToModernConfigurationUI();
                 
                 // Now start the Steam library selection process
                 _logger.LogInformation("Setup process: initiating Steam library selection");
@@ -1430,34 +1372,275 @@ namespace ScheduleIDevelopementEnvironementManager
             }
         }
 
-        private void SwitchToNormalUI()
+        private void SwitchToModernConfigurationUI()
         {
+            FormDiagnostics.StartPerformanceTracking("SwitchToModernConfigurationUI");
+            
             try
             {
-                _logger.LogInformation("Switching from setup UI to normal UI");
+                _logger.LogInformation("Switching from setup UI to modern configuration UI");
                 
-                // Clear setup controls and show normal UI
+                // Clear setup controls and show modern configuration UI
                 this.Controls.Clear();
                 
-                // Reset form properties
-                this.Text = "Schedule I Development Environment Manager";
-                this.Size = new Size(800, 700);
+                // Reset form properties for configuration mode
+                this.Text = "🔧 Schedule I Development Manager - Environment Configuration";
+                this.Size = new Size(1000, 850);  // Increased to accommodate larger layout
                 
-                // Apply dark theme
-                ApplyDarkTheme();
+                // Create and show modern configuration UI
+                CreateModernConfigurationLayout();
+                SetupModernConfigurationEventHandlers();
                 
-                // Create and show normal UI
-                CreateControls();
-                SetupEventHandlers();
-                
-                // Load the configuration (but not Steam information yet - that will be handled by StartSetupProcess)
+                // Load the configuration
                 LoadConfiguration();
+                
+                FormDiagnostics.LogBulkThemeApplication("MainForm_Configuration", 15, 15);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error switching to normal UI");
-                MessageBox.Show($"Error switching to normal UI: {ex.Message}", "Error", 
+                FormDiagnostics.LogUserInteraction("SwitchToConfigurationError", "MainForm", ex.Message);
+                _logger.LogError(ex, "Error switching to modern configuration UI");
+                MessageBox.Show($"Error switching to configuration UI: {ex.Message}", "Error", 
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                FormDiagnostics.EndPerformanceTracking("SwitchToModernConfigurationUI");
+            }
+        }
+
+        private void CreateModernConfigurationLayout()
+        {
+            FormDiagnostics.StartPerformanceTracking("CreateModernConfigurationLayout");
+            
+            // Main container - increased size for better spacing
+            var mainPanel = new Panel();
+            mainPanel.Size = new Size(950, 750);
+            mainPanel.Location = new Point(10, 10);
+            mainPanel.BackColor = ModernUITheme.Colors.BackgroundPrimary;
+
+            // Header section - increased size for better text display
+            var headerPanel = ModernControls.CreateSectionPanel("", new Size(950, 100));
+            headerPanel.Location = new Point(0, 0);
+            headerPanel.BackColor = ModernUITheme.Colors.BackgroundSecondary;
+
+            var titleLabel = ModernControls.CreateHeadingLabel("🔧 Development Environment Configuration", true);
+            titleLabel.Location = new Point(15, 15);
+            titleLabel.Size = new Size(920, 40);  // Much wider to prevent text cutoff
+            titleLabel.ForeColor = ModernUITheme.Colors.AccentPrimary;
+
+            var statusLabel = ModernControls.CreateStatusLabel("Configure your Steam integration and managed environment settings", ModernUITheme.Colors.TextSecondary);
+            statusLabel.Location = new Point(15, 55);
+            statusLabel.Size = new Size(920, 30);  // Increased height for better text display
+
+            headerPanel.Controls.AddRange(new Control[] { titleLabel, statusLabel });
+
+            // Steam Integration Card - increased size and better spacing
+            var steamCard = ModernControls.CreateInfoCard("🎮 Steam Integration", "");
+            steamCard.Size = new Size(450, 220);  // Larger with better internal spacing
+            steamCard.Location = new Point(15, 120);
+
+            var lblSteamLibrary = ModernControls.CreateFieldLabel("Steam Library Path:");
+            lblSteamLibrary.Location = new Point(15, 45);
+            lblSteamLibrary.Size = new Size(420, 25);  // Much wider for long labels
+
+            txtSteamLibrary = ModernControls.CreateModernTextBox(true, "Steam library path will be auto-detected...");
+            txtSteamLibrary.Location = new Point(15, 75);
+            txtSteamLibrary.Size = new Size(350, 30);  // Wider textbox
+
+            btnBrowseSteamLibrary = ModernControls.CreateActionButton("📁", ModernUITheme.ButtonStyle.Secondary);
+            btnBrowseSteamLibrary.Location = new Point(375, 75);  // 10px spacing from textbox
+            btnBrowseSteamLibrary.Size = new Size(50, 30);
+
+            var lblGameInstall = ModernControls.CreateFieldLabel("Schedule I Game Path:");
+            lblGameInstall.Location = new Point(15, 120);
+            lblGameInstall.Size = new Size(420, 25);  // Wider for full text display
+
+            txtGameInstall = ModernControls.CreateModernTextBox(true);
+            txtGameInstall.Location = new Point(15, 150);
+            txtGameInstall.Size = new Size(350, 30);  // Wider textbox
+
+            btnBrowseGameInstall = ModernControls.CreateActionButton("📁", ModernUITheme.ButtonStyle.Secondary);
+            btnBrowseGameInstall.Location = new Point(375, 150);  // 10px spacing
+            btnBrowseGameInstall.Size = new Size(50, 30);
+
+            steamCard.Controls.AddRange(new Control[] { lblSteamLibrary, txtSteamLibrary, btnBrowseSteamLibrary, lblGameInstall, txtGameInstall, btnBrowseGameInstall });
+
+            // Environment Management Card - increased size and better spacing
+            var envCard = ModernControls.CreateInfoCard("🗂️ Environment Management", "");
+            envCard.Size = new Size(450, 220);  // Larger with better internal spacing
+            envCard.Location = new Point(485, 120);
+
+            var lblManagedEnv = ModernControls.CreateFieldLabel("Managed Environment Path:");
+            lblManagedEnv.Location = new Point(15, 45);
+            lblManagedEnv.Size = new Size(420, 25);  // Much wider for full text
+
+            txtManagedEnv = ModernControls.CreateModernTextBox(false, "Choose where to store managed environments...");
+            txtManagedEnv.Location = new Point(15, 75);
+            txtManagedEnv.Size = new Size(350, 30);  // Wider textbox
+
+            btnBrowseManagedEnv = ModernControls.CreateActionButton("📁", ModernUITheme.ButtonStyle.Secondary);
+            btnBrowseManagedEnv.Location = new Point(375, 75);  // 10px spacing
+            btnBrowseManagedEnv.Size = new Size(50, 30);
+
+            var lblCurrentBranch = ModernControls.CreateFieldLabel("Current Branch:");
+            lblCurrentBranch.Location = new Point(15, 120);
+            lblCurrentBranch.Size = new Size(420, 25);  // Much wider
+
+            cboCurrentBranch = new ComboBox();
+            cboCurrentBranch.Location = new Point(15, 150);
+            cboCurrentBranch.Size = new Size(350, 30);  // Wider combobox
+            cboCurrentBranch.DropDownStyle = ComboBoxStyle.DropDownList;
+            cboCurrentBranch.Font = ModernUITheme.Typography.BodyMedium;
+            cboCurrentBranch.BackColor = ModernUITheme.Colors.BackgroundTertiary;
+            cboCurrentBranch.ForeColor = ModernUITheme.Colors.TextPrimary;
+            cboCurrentBranch.Items.AddRange(DevEnvironmentConfig.AvailableBranches.ToArray());
+
+            envCard.Controls.AddRange(new Control[] { lblManagedEnv, txtManagedEnv, btnBrowseManagedEnv, lblCurrentBranch, cboCurrentBranch });
+
+            // Branch Selection Card - improved size and spacing
+            var branchCard = ModernControls.CreateInfoCard("🌿 Branch Selection", "Select which branches to manage in your development environment");
+            branchCard.Size = new Size(920, 160);  // Wider and taller for better spacing
+            branchCard.Location = new Point(15, 360);
+
+            chkMainBranch = ModernControls.CreateModernCheckBox("📍 Main Branch (Stable Release)", false);
+            chkMainBranch.Location = new Point(15, 55);
+            chkMainBranch.Size = new Size(430, 25);  // Wider for full text display
+
+            chkBetaBranch = ModernControls.CreateModernCheckBox("🧪 Beta Branch (Preview Updates)", false);
+            chkBetaBranch.Location = new Point(465, 55);  // Better spacing between columns
+            chkBetaBranch.Size = new Size(430, 25);
+
+            chkAlternateBranch = ModernControls.CreateModernCheckBox("🔀 Alternate Branch (Experimental)", false);
+            chkAlternateBranch.Location = new Point(15, 90);  // More vertical spacing
+            chkAlternateBranch.Size = new Size(430, 25);
+
+            chkAlternateBetaBranch = ModernControls.CreateModernCheckBox("⚡ Alternate Beta Branch (Cutting Edge)", false);
+            chkAlternateBetaBranch.Location = new Point(465, 90);
+            chkAlternateBetaBranch.Size = new Size(430, 25);
+
+            branchCard.Controls.AddRange(new Control[] { chkMainBranch, chkBetaBranch, chkAlternateBranch, chkAlternateBetaBranch });
+
+            // Status and Actions Card - improved size and spacing
+            var statusCard = ModernControls.CreateInfoCard("📊 Status & Actions", "");
+            statusCard.Size = new Size(920, 140);  // Larger for better button and text spacing
+            statusCard.Location = new Point(15, 540);
+
+            lblStatus = ModernControls.CreateStatusLabel("🔄 Loading configuration...", ModernUITheme.Colors.AccentInfo);
+            lblStatus.Location = new Point(15, 45);
+            lblStatus.Size = new Size(450, 30);  // Wider and taller for better text display
+
+            txtConfigInfo = new RichTextBox();
+            txtConfigInfo.Location = new Point(15, 80);
+            txtConfigInfo.Size = new Size(450, 45);  // Wider and taller
+            txtConfigInfo.ReadOnly = true;
+            txtConfigInfo.BackColor = ModernUITheme.Colors.LogBackground;
+            txtConfigInfo.ForeColor = ModernUITheme.Colors.TextSecondary;
+            txtConfigInfo.Font = ModernUITheme.Typography.BodySmall;
+            txtConfigInfo.BorderStyle = BorderStyle.None;
+
+            btnCreateEnvironment = ModernControls.CreateActionButton("🚀 Create Environment", ModernUITheme.ButtonStyle.Success);
+            btnCreateEnvironment.Location = new Point(485, 45);  // Better spacing from text area
+            btnCreateEnvironment.Size = new Size(180, 45);  // Larger button
+            btnCreateEnvironment.Enabled = false;
+
+            btnRefresh = ModernControls.CreateActionButton("🔄 Refresh", ModernUITheme.ButtonStyle.Info);
+            btnRefresh.Location = new Point(680, 45);  // 15px spacing between buttons
+            btnRefresh.Size = new Size(110, 45);
+
+            btnExit = ModernControls.CreateActionButton("❌ Exit", ModernUITheme.ButtonStyle.Danger);
+            btnExit.Location = new Point(805, 45);  // Aligned with other buttons
+            btnExit.Size = new Size(90, 45);       // Larger and aligned height
+
+            progressBar = new ProgressBar();
+            progressBar.Location = new Point(485, 100);  // Below the buttons
+            progressBar.Size = new Size(405, 20);         // Spans across buttons area
+            progressBar.Style = ProgressBarStyle.Continuous;
+            progressBar.Visible = false;
+
+            statusCard.Controls.AddRange(new Control[] { lblStatus, txtConfigInfo, btnCreateEnvironment, btnRefresh, btnExit, progressBar });
+
+            // Add all cards to main panel
+            mainPanel.Controls.AddRange(new Control[] { headerPanel, steamCard, envCard, branchCard, statusCard });
+
+            // Add main panel to form
+            this.Controls.Add(mainPanel);
+
+            FormDiagnostics.EndPerformanceTracking("CreateModernConfigurationLayout");
+        }
+
+        private void SetupModernConfigurationEventHandlers()
+        {
+            FormDiagnostics.LogUserInteraction("SetupEventHandlers", "MainForm_Configuration");
+            
+            // Steam browsing buttons
+            if (btnBrowseSteamLibrary != null)
+            {
+                btnBrowseSteamLibrary.Click += BtnBrowseSteamLibrary_Click;
+                FormDiagnostics.LogUserInteraction("EventHandlerAttached", "BrowseSteamLibraryButton");
+            }
+            
+            if (btnBrowseGameInstall != null)
+            {
+                btnBrowseGameInstall.Click += BtnBrowseGameInstall_Click;
+                FormDiagnostics.LogUserInteraction("EventHandlerAttached", "BrowseGameInstallButton");
+            }
+            
+            if (btnBrowseManagedEnv != null)
+            {
+                btnBrowseManagedEnv.Click += BtnBrowseManagedEnv_Click;
+                FormDiagnostics.LogUserInteraction("EventHandlerAttached", "BrowseManagedEnvButton");
+            }
+            
+            // Branch selection checkboxes
+            if (chkMainBranch != null)
+            {
+                chkMainBranch.CheckedChanged += BranchSelection_Changed;
+                FormDiagnostics.LogUserInteraction("EventHandlerAttached", "MainBranchCheckbox");
+            }
+            
+            if (chkBetaBranch != null)
+            {
+                chkBetaBranch.CheckedChanged += BranchSelection_Changed;
+                FormDiagnostics.LogUserInteraction("EventHandlerAttached", "BetaBranchCheckbox");
+            }
+            
+            if (chkAlternateBranch != null)
+            {
+                chkAlternateBranch.CheckedChanged += BranchSelection_Changed;
+                FormDiagnostics.LogUserInteraction("EventHandlerAttached", "AlternateBranchCheckbox");
+            }
+            
+            if (chkAlternateBetaBranch != null)
+            {
+                chkAlternateBetaBranch.CheckedChanged += BranchSelection_Changed;
+                FormDiagnostics.LogUserInteraction("EventHandlerAttached", "AlternateBetaBranchCheckbox");
+            }
+            
+            // Current branch combo box
+            if (cboCurrentBranch != null)
+            {
+                cboCurrentBranch.SelectedIndexChanged += CurrentBranch_SelectionChanged;
+                FormDiagnostics.LogUserInteraction("EventHandlerAttached", "CurrentBranchComboBox");
+            }
+            
+            // Action buttons
+            if (btnCreateEnvironment != null)
+            {
+                btnCreateEnvironment.Click += BtnCreateEnvironment_Click;
+                FormDiagnostics.LogUserInteraction("EventHandlerAttached", "CreateEnvironmentButton");
+            }
+            
+            if (btnRefresh != null)
+            {
+                btnRefresh.Click += BtnRefresh_Click;
+                FormDiagnostics.LogUserInteraction("EventHandlerAttached", "RefreshButton");
+            }
+            
+            if (btnExit != null)
+            {
+                btnExit.Click += BtnExit_Click;
+                FormDiagnostics.LogUserInteraction("EventHandlerAttached", "ExitButton");
             }
         }
 
@@ -1474,90 +1657,11 @@ namespace ScheduleIDevelopementEnvironementManager
         private CheckBox? chkAlternateBranch;
         private CheckBox? chkAlternateBetaBranch;
         private Label? lblStatus;
-        private TextBox? txtConfigInfo;
+        private RichTextBox? txtConfigInfo;
         private ProgressBar? progressBar;
         private Button? btnCreateEnvironment;
         private Button? btnRefresh;
         private Button? btnExit;
 
-        #region Dark Theme Methods
-
-        /// <summary>
-        /// Applies dark theme to the main form
-        /// </summary>
-        private void ApplyDarkTheme()
-        {
-            // Set form background to dark gray
-            this.BackColor = Color.FromArgb(45, 45, 48);
-            this.ForeColor = Color.White;
-        }
-
-        /// <summary>
-        /// Applies dark theme to individual controls
-        /// </summary>
-        /// <param name="control">The control to apply dark theme to</param>
-        private void ApplyDarkThemeToControl(Control? control)
-        {
-            if (control == null) return;
-
-            // Apply dark theme based on control type
-            switch (control)
-            {
-                case Form form:
-                    form.BackColor = Color.FromArgb(45, 45, 48);
-                    form.ForeColor = Color.White;
-                    break;
-
-                case Label label:
-                    label.BackColor = Color.Transparent;
-                    label.ForeColor = Color.White;
-                    break;
-
-                case TextBox textBox:
-                    textBox.BackColor = Color.FromArgb(30, 30, 30);
-                    textBox.ForeColor = Color.White;
-                    textBox.BorderStyle = BorderStyle.FixedSingle;
-                    break;
-
-                case Button button:
-                    button.BackColor = Color.FromArgb(0, 122, 204); // Professional blue
-                    button.ForeColor = Color.White;
-                    button.FlatStyle = FlatStyle.Flat;
-                    button.FlatAppearance.BorderColor = Color.FromArgb(0, 100, 180);
-                    button.FlatAppearance.MouseOverBackColor = Color.FromArgb(0, 140, 230);
-                    button.FlatAppearance.MouseDownBackColor = Color.FromArgb(0, 100, 180);
-                    break;
-
-                case ComboBox comboBox:
-                    comboBox.BackColor = Color.FromArgb(30, 30, 30);
-                    comboBox.ForeColor = Color.White;
-                    comboBox.FlatStyle = FlatStyle.Flat;
-                    break;
-
-                case CheckBox checkBox:
-                    checkBox.BackColor = Color.Transparent;
-                    checkBox.ForeColor = Color.White;
-                    break;
-
-                case ProgressBar progressBar:
-                    progressBar.BackColor = Color.FromArgb(30, 30, 30);
-                    progressBar.ForeColor = Color.FromArgb(0, 122, 204);
-                    break;
-
-                case RichTextBox richTextBox:
-                    richTextBox.BackColor = Color.FromArgb(30, 30, 30);
-                    richTextBox.ForeColor = Color.White;
-                    richTextBox.BorderStyle = BorderStyle.FixedSingle;
-                    break;
-            }
-
-            // Recursively apply to child controls
-            foreach (Control childControl in control.Controls)
-            {
-                ApplyDarkThemeToControl(childControl);
-            }
-        }
-
-        #endregion
     }
 }

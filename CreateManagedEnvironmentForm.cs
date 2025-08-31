@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ScheduleIDevelopementEnvironementManager.Models;
 using ScheduleIDevelopementEnvironementManager.Services;
+using ScheduleIDevelopementEnvironementManager.UI;
 using System.ComponentModel;
 using System.IO;
 
@@ -15,7 +16,27 @@ namespace ScheduleIDevelopementEnvironementManager
         private DevEnvironmentConfig _config;
         private List<SteamGameInfo> _availableGames;
 
+        // Wizard State Management
+        private int _currentStep = 1;
+        private const int _totalSteps = 4;
+        
         // UI Controls
+        private Panel? _mainPanel;
+        private Panel? _headerPanel;
+        private Panel? _contentPanel;
+        private Panel? _navigationPanel;
+        private Label? _stepLabel;
+        private Label? _titleLabel;
+        private Label? _descriptionLabel;
+        private Button? _btnNext;
+        private Button? _btnPrevious;
+        private Button? _btnCancel;
+        
+        // Legacy button references for compatibility
+        private Button? btnCreateEnvironment;
+        private Button? btnCancel;
+        
+        // Step-specific controls
         private TextBox? txtSteamLibrary;
         private Button? btnBrowseSteamLibrary;
         private TextBox? txtGameInstall;
@@ -27,8 +48,6 @@ namespace ScheduleIDevelopementEnvironementManager
         private CheckBox? chkAlternateBranch;
         private CheckBox? chkAlternateBetaBranch;
         private Label? lblStatus;
-        private Button? btnCreateEnvironment;
-        private Button? btnCancel;
 
         public CreateManagedEnvironmentForm()
         {
@@ -49,11 +68,17 @@ namespace ScheduleIDevelopementEnvironementManager
             _configService = serviceProvider.GetRequiredService<ConfigurationService>();
             _logger = serviceProvider.GetRequiredService<ILogger<CreateManagedEnvironmentForm>>();
             
+            // Initialize diagnostics system
+            FormDiagnostics.Initialize(_logger);
+            FormDiagnostics.LogFormInitialization("CreateManagedEnvironmentForm");
+            
             _config = new DevEnvironmentConfig();
             _availableGames = new List<SteamGameInfo>();
             
-            InitializeForm();
-            LoadSteamInformation();
+            InitializeModernWizardForm();
+            LoadSteamInformationForWizard(); // Load Steam data synchronously
+            
+            FormDiagnostics.LogFormLoadComplete("CreateManagedEnvironmentForm");
         }
 
         private void InitializeForm()
@@ -785,6 +810,432 @@ namespace ScheduleIDevelopementEnvironementManager
                 ApplyDarkThemeToControl(childControl);
             }
         }
+
+        #endregion
+
+        #region Wizard Implementation Methods
+
+        private void InitializeModernWizardForm()
+        {
+            FormDiagnostics.StartPerformanceTracking("WizardForm_Initialization");
+            
+            this.Text = "🧙‍♂️ Environment Setup Wizard - Schedule I Development Manager";
+            this.Size = new Size(1000, 700);
+            this.StartPosition = FormStartPosition.CenterParent;
+            this.FormBorderStyle = FormBorderStyle.FixedSingle;
+            this.MaximizeBox = false;
+            this.BackColor = ModernUITheme.Colors.BackgroundPrimary;
+            
+            this.Icon = MainForm.LoadApplicationIcon();
+
+            CreateWizardLayout();
+            SetupWizardEventHandlers();
+            ShowStep(_currentStep);
+            
+            FormDiagnostics.EndPerformanceTracking("WizardForm_Initialization");
+        }
+
+        private void CreateWizardLayout()
+        {
+            FormDiagnostics.LogUserInteraction("CreateWizardLayout", "CreateManagedEnvironmentForm");
+            
+            _mainPanel = new Panel();
+            _mainPanel.Size = new Size(950, 650);
+            _mainPanel.Location = new Point(25, 25);
+            _mainPanel.BackColor = ModernUITheme.Colors.BackgroundPrimary;
+
+            _headerPanel = ModernControls.CreateSectionPanel("", new Size(950, 100));
+            _headerPanel.Location = new Point(0, 0);
+            _headerPanel.BackColor = ModernUITheme.Colors.BackgroundSecondary;
+
+            _stepLabel = ModernControls.CreateHeadingLabel("Step 1 of 4", false);
+            _stepLabel.Location = new Point(15, 15);
+            _stepLabel.Size = new Size(200, 25);
+            _stepLabel.ForeColor = ModernUITheme.Colors.AccentPrimary;
+
+            _titleLabel = ModernControls.CreateHeadingLabel("Steam Library Detection", true);
+            _titleLabel.Location = new Point(15, 45);
+            _titleLabel.Size = new Size(650, 30);
+
+            _descriptionLabel = ModernControls.CreateStatusLabel("Detecting your Steam installation and libraries...", ModernUITheme.Colors.TextSecondary);
+            _descriptionLabel.Location = new Point(15, 75);
+            _descriptionLabel.Size = new Size(920, 20);
+
+            _headerPanel.Controls.AddRange(new Control[] { _stepLabel, _titleLabel, _descriptionLabel });
+
+            _contentPanel = new Panel();
+            _contentPanel.Size = new Size(950, 460);
+            _contentPanel.Location = new Point(0, 100);
+            _contentPanel.BackColor = ModernUITheme.Colors.BackgroundPrimary;
+
+            _navigationPanel = new Panel();
+            _navigationPanel.Size = new Size(950, 90);
+            _navigationPanel.Location = new Point(0, 560);
+            _navigationPanel.BackColor = ModernUITheme.Colors.BackgroundSecondary;
+
+            _btnPrevious = ModernControls.CreateActionButton("⬅️ Previous", ModernUITheme.ButtonStyle.Secondary);
+            _btnPrevious.Location = new Point(700, 25);
+            _btnPrevious.Size = new Size(120, 40);
+            _btnPrevious.Enabled = false;
+
+            _btnNext = ModernControls.CreateActionButton("Next ➡️", ModernUITheme.ButtonStyle.Primary);
+            _btnNext.Location = new Point(825, 25);
+            _btnNext.Size = new Size(120, 40);
+
+            _btnCancel = ModernControls.CreateActionButton("❌ Cancel", ModernUITheme.ButtonStyle.Danger);
+            _btnCancel.Location = new Point(15, 25);
+            _btnCancel.Size = new Size(120, 40);
+            
+            // Assign legacy button references for compatibility
+            btnCreateEnvironment = _btnNext;
+            btnCancel = _btnCancel;
+
+            var progressLabel = ModernControls.CreateStatusLabel("🚀 Setting up your development environment...", ModernUITheme.Colors.TextSecondary);
+            progressLabel.Location = new Point(150, 35);
+            progressLabel.Size = new Size(500, 20);
+
+            _navigationPanel.Controls.AddRange(new Control[] { _btnPrevious, _btnNext, _btnCancel, progressLabel });
+            _mainPanel.Controls.AddRange(new Control[] { _headerPanel, _contentPanel, _navigationPanel });
+            this.Controls.Add(_mainPanel);
+
+            FormDiagnostics.LogBulkThemeApplication("CreateManagedEnvironmentForm_Wizard", 12, 12);
+        }
+
+        private void SetupWizardEventHandlers()
+        {
+            FormDiagnostics.LogUserInteraction("SetupEventHandlers", "CreateManagedEnvironmentForm");
+            
+            if (_btnNext != null)
+            {
+                _btnNext.Click += BtnNext_Click;
+                FormDiagnostics.LogUserInteraction("EventHandlerAttached", "NextButton");
+            }
+            
+            if (_btnPrevious != null)
+            {
+                _btnPrevious.Click += BtnPrevious_Click;
+                FormDiagnostics.LogUserInteraction("EventHandlerAttached", "PreviousButton");
+            }
+            
+            if (_btnCancel != null)
+            {
+                _btnCancel.Click += BtnCancel_Click;
+                FormDiagnostics.LogUserInteraction("EventHandlerAttached", "CancelButton");
+            }
+        }
+
+        private async void BtnNext_Click(object? sender, EventArgs e)
+        {
+            FormDiagnostics.LogUserInteraction("NextButtonClick", $"CreateManagedEnvironmentForm", _currentStep);
+            
+            try
+            {
+                if (_currentStep == _totalSteps)
+                {
+                    await CreateManagedEnvironmentAsync();
+                }
+                else
+                {
+                    ShowStep(_currentStep + 1);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling Next button click");
+                MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void BtnPrevious_Click(object? sender, EventArgs e)
+        {
+            FormDiagnostics.LogUserInteraction("PreviousButtonClick", $"CreateManagedEnvironmentForm", _currentStep);
+            
+            if (_currentStep > 1)
+            {
+                ShowStep(_currentStep - 1);
+            }
+        }
+
+        private void ShowStep(int stepNumber)
+        {
+            FormDiagnostics.LogUserInteraction("ShowStep", $"CreateManagedEnvironmentForm", stepNumber);
+            FormDiagnostics.StartPerformanceTracking($"ShowStep_{stepNumber}");
+            
+            if (_contentPanel == null) return;
+            
+            _contentPanel.Controls.Clear();
+            _currentStep = stepNumber;
+            UpdateWizardHeader();
+            
+            switch (stepNumber)
+            {
+                case 1:
+                    ShowStep1_SteamLibraryDetection();
+                    break;
+                case 2:
+                    ShowStep2_GamePathConfiguration();
+                    break;
+                case 3:
+                    ShowStep3_ManagedEnvironmentPath();
+                    break;
+                case 4:
+                    ShowStep4_BranchSelection();
+                    break;
+                default:
+                    ShowStep1_SteamLibraryDetection();
+                    break;
+            }
+            
+            UpdateNavigationButtons();
+            FormDiagnostics.EndPerformanceTracking($"ShowStep_{stepNumber}");
+        }
+
+        private void UpdateWizardHeader()
+        {
+            if (_stepLabel == null || _titleLabel == null || _descriptionLabel == null) return;
+            
+            _stepLabel.Text = $"Step {_currentStep} of {_totalSteps}";
+            
+            var stepInfo = GetStepInfo(_currentStep);
+            _titleLabel.Text = stepInfo.Title;
+            _descriptionLabel.Text = stepInfo.Description;
+        }
+
+        private (string Title, string Description) GetStepInfo(int step)
+        {
+            return step switch
+            {
+                1 => ("🔍 Steam Library Detection", "Locating your Steam installation and game libraries"),
+                2 => ("🎮 Game Path Configuration", "Configuring Schedule I game location"),
+                3 => ("📁 Environment Location", "Setting up managed environment storage"),
+                4 => ("🌿 Branch Selection", "Choosing branches to manage"),
+                _ => ("Setup", "Configuring development environment")
+            };
+        }
+
+        private void UpdateNavigationButtons()
+        {
+            if (_btnPrevious == null || _btnNext == null) return;
+            
+            _btnPrevious.Enabled = _currentStep > 1;
+            
+            if (_currentStep == _totalSteps)
+            {
+                _btnNext.Text = "🚀 Create Environment";
+                _btnNext.BackColor = ModernUITheme.Colors.AccentSuccess;
+            }
+            else
+            {
+                _btnNext.Text = "Next ➡️";
+                _btnNext.BackColor = ModernUITheme.Colors.AccentPrimary;
+            }
+            
+            _btnNext.Enabled = ValidateCurrentStep();
+            FormDiagnostics.LogButtonStateChange($"NextButton_Step{_currentStep}", _btnNext.Enabled, $"Step {_currentStep} validation");
+        }
+
+        private bool ValidateCurrentStep()
+        {
+            return _currentStep switch
+            {
+                1 => !string.IsNullOrEmpty(_config.SteamLibraryPath),
+                2 => !string.IsNullOrEmpty(_config.GameInstallPath),
+                3 => !string.IsNullOrEmpty(_config.ManagedEnvironmentPath),
+                4 => _config.SelectedBranches.Count > 0,
+                _ => false
+            };
+        }
+
+        private void ShowStep1_SteamLibraryDetection()
+        {
+            FormDiagnostics.LogUserInteraction("ShowStep1", "SteamLibraryDetection");
+            
+            var contentCard = ModernControls.CreateInfoCard(
+                "Steam Library Detection", 
+                "We'll automatically detect your Steam installation and libraries. " +
+                "If multiple libraries are found, you can select the one containing Schedule I.");
+            contentCard.Size = new Size(880, 120);
+            contentCard.Location = new Point(35, 30);
+
+            var lblSteamLibrary = ModernControls.CreateFieldLabel("Steam Library Path:");
+            lblSteamLibrary.Location = new Point(35, 170);
+            lblSteamLibrary.Size = new Size(250, 25);
+            
+            txtSteamLibrary = ModernControls.CreateModernTextBox(true, "Detecting Steam libraries...");
+            txtSteamLibrary.Location = new Point(35, 200);
+            txtSteamLibrary.Size = new Size(720, 35);
+            
+            btnBrowseSteamLibrary = ModernControls.CreateActionButton("📁 Browse", ModernUITheme.ButtonStyle.Secondary);
+            btnBrowseSteamLibrary.Location = new Point(765, 200);
+            btnBrowseSteamLibrary.Size = new Size(100, 35);
+
+            lblStatus = ModernControls.CreateStatusLabel("🔍 Scanning for Steam installations...", ModernUITheme.Colors.AccentInfo);
+            lblStatus.Location = new Point(35, 250);
+            lblStatus.Size = new Size(850, 25);
+
+            _contentPanel?.Controls.AddRange(new Control[] {
+                contentCard, lblSteamLibrary, txtSteamLibrary, btnBrowseSteamLibrary, lblStatus
+            });
+        }
+
+        private void ShowStep2_GamePathConfiguration()
+        {
+            FormDiagnostics.LogUserInteraction("ShowStep2", "GamePathConfiguration");
+            
+            var contentCard = ModernControls.CreateInfoCard(
+                "Schedule I Game Configuration", 
+                "Verify the detected Schedule I game installation or browse to select a different location.");
+            contentCard.Size = new Size(880, 120);
+            contentCard.Location = new Point(35, 30);
+
+            var lblGameInstall = ModernControls.CreateFieldLabel("Schedule I Game Installation Path:");
+            lblGameInstall.Location = new Point(35, 170);
+            lblGameInstall.Size = new Size(350, 25);
+            
+            txtGameInstall = ModernControls.CreateModernTextBox(true, "");
+            txtGameInstall.Location = new Point(35, 200);
+            txtGameInstall.Size = new Size(720, 35);
+            txtGameInstall.Text = _config.GameInstallPath;
+            
+            btnBrowseGameInstall = ModernControls.CreateActionButton("📁 Browse", ModernUITheme.ButtonStyle.Secondary);
+            btnBrowseGameInstall.Location = new Point(765, 200);
+            btnBrowseGameInstall.Size = new Size(100, 35);
+
+            _contentPanel?.Controls.AddRange(new Control[] {
+                contentCard, lblGameInstall, txtGameInstall, btnBrowseGameInstall
+            });
+        }
+
+        private void ShowStep3_ManagedEnvironmentPath()
+        {
+            FormDiagnostics.LogUserInteraction("ShowStep3", "ManagedEnvironmentPath");
+            
+            var contentCard = ModernControls.CreateInfoCard(
+                "Managed Environment Storage", 
+                "Choose where to store your managed development environments. " +
+                "This location will contain separate copies of Schedule I for each branch.");
+            contentCard.Size = new Size(880, 120);
+            contentCard.Location = new Point(35, 30);
+
+            var lblManagedEnv = ModernControls.CreateFieldLabel("Managed Environment Storage Path:");
+            lblManagedEnv.Location = new Point(35, 170);
+            lblManagedEnv.Size = new Size(350, 25);
+            
+            txtManagedEnv = ModernControls.CreateModernTextBox(false, "Select a directory for managed environments...");
+            txtManagedEnv.Location = new Point(35, 200);
+            txtManagedEnv.Size = new Size(720, 35);
+            txtManagedEnv.Text = _config.ManagedEnvironmentPath;
+            
+            btnBrowseManagedEnv = ModernControls.CreateActionButton("📁 Browse", ModernUITheme.ButtonStyle.Primary);
+            btnBrowseManagedEnv.Location = new Point(765, 200);
+            btnBrowseManagedEnv.Size = new Size(100, 35);
+
+            _contentPanel?.Controls.AddRange(new Control[] {
+                contentCard, lblManagedEnv, txtManagedEnv, btnBrowseManagedEnv
+            });
+        }
+
+        private void ShowStep4_BranchSelection()
+        {
+            FormDiagnostics.LogUserInteraction("ShowStep4", "BranchSelection");
+            
+            var contentCard = ModernControls.CreateInfoCard(
+                "Branch Selection", 
+                "Select which Schedule I branches you want to manage. " +
+                "Each selected branch will have its own managed environment copy.");
+            contentCard.Size = new Size(880, 120);
+            contentCard.Location = new Point(35, 20);
+
+            var lblBranches = ModernControls.CreateFieldLabel("Select Branches to Manage:");
+            lblBranches.Location = new Point(35, 160);
+            lblBranches.Size = new Size(300, 25);
+
+            chkMainBranch = ModernControls.CreateModernCheckBox("🌟 Main Branch (Stable)");
+            chkMainBranch.Location = new Point(50, 195);
+            chkMainBranch.Size = new Size(400, 35);
+
+            chkBetaBranch = ModernControls.CreateModernCheckBox("🧪 Beta Branch (Testing)");
+            chkBetaBranch.Location = new Point(50, 240);
+            chkBetaBranch.Size = new Size(400, 35);
+
+            chkAlternateBranch = ModernControls.CreateModernCheckBox("🔄 Alternate Branch");
+            chkAlternateBranch.Location = new Point(50, 285);
+            chkAlternateBranch.Size = new Size(400, 35);
+
+            chkAlternateBetaBranch = ModernControls.CreateModernCheckBox("🔬 Alternate Beta Branch");
+            chkAlternateBetaBranch.Location = new Point(50, 330);
+            chkAlternateBetaBranch.Size = new Size(400, 35);
+
+            _contentPanel?.Controls.AddRange(new Control[] {
+                contentCard, lblBranches, chkMainBranch, chkBetaBranch, chkAlternateBranch, chkAlternateBetaBranch
+            });
+
+            SetupBranchEventHandlers();
+        }
+
+        private void SetupBranchEventHandlers()
+        {
+            if (chkMainBranch != null) chkMainBranch.CheckedChanged += BranchSelection_Changed;
+            if (chkBetaBranch != null) chkBetaBranch.CheckedChanged += BranchSelection_Changed;
+            if (chkAlternateBranch != null) chkAlternateBranch.CheckedChanged += BranchSelection_Changed;
+            if (chkAlternateBetaBranch != null) chkAlternateBetaBranch.CheckedChanged += BranchSelection_Changed;
+        }
+
+        private void BranchSelection_Changed(object? sender, EventArgs e)
+        {
+            UpdateSelectedBranches();
+            UpdateNavigationButtons();
+            
+            FormDiagnostics.LogUserInteraction("BranchSelectionChanged", "CreateManagedEnvironmentForm", 
+                $"Selected: {_config.SelectedBranches.Count}");
+        }
+
+        private void LoadSteamInformationForWizard()
+        {
+            try
+            {
+                FormDiagnostics.StartPerformanceTracking("LoadSteamInformation");
+                _logger.LogInformation("Loading Steam information...");
+
+                var steamLibraries = _steamService.GetSteamLibraryPaths();
+                if (steamLibraries.Count > 0)
+                {
+                    _config.SteamLibraryPath = steamLibraries[0];
+                    
+                    _availableGames = _steamService.GetSteamGames(_config.SteamLibraryPath);
+                    var scheduleIGame = _availableGames.FirstOrDefault(g => g.AppId == "3164500");
+                    
+                    if (scheduleIGame != null)
+                    {
+                        _config.GameInstallPath = scheduleIGame.InstallPath;
+                        _logger.LogInformation("Schedule I game found at: {Path}", _config.GameInstallPath);
+                        
+                        var (detectedBranch, buildId) = _steamService.GetBranchAndBuildIdFromManifest(_config.GameInstallPath);
+                        if (!string.IsNullOrEmpty(detectedBranch))
+                        {
+                            _config.InstalledBranch = detectedBranch;
+                            _config.SetBuildIdForBranch(detectedBranch, buildId ?? "");
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Schedule I game not found in selected Steam library");
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("No Steam libraries found");
+                }
+
+                FormDiagnostics.EndPerformanceTracking("LoadSteamInformation");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading Steam information");
+                FormDiagnostics.EndPerformanceTracking("LoadSteamInformation");
+            }
+        }
+
 
         #endregion
     }

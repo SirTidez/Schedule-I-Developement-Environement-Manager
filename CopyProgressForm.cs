@@ -2,132 +2,261 @@ using System;
 using System.Windows.Forms;
 using System.Drawing;
 using System.IO;
+using ScheduleIDevelopementEnvironementManager.UI;
+using Microsoft.Extensions.Logging;
 
 namespace ScheduleIDevelopementEnvironementManager
 {
     public partial class CopyProgressForm : Form
     {
-        private RichTextBox txtConsoleLog = null!;
-        private ProgressBar progressBar = null!;
-        private Label lblStatus = null!;
-        private Button btnClose = null!;
+        private readonly ILogger? _logger;
         private bool isCopyComplete = false;
 
-        public CopyProgressForm()
+        // Modern UI Controls
+        private Panel? _mainPanel;
+        private Panel? _headerPanel;
+        private Label? _titleLabel;
+        private Label? _statusLabel;
+        private Panel? _progressPanel;
+        private ProgressBar? _modernProgressBar;
+        private Label? _progressLabel;
+        private Label? _progressPercent;
+        private Panel? _logPanel;
+        private RichTextBox? _consoleLog;
+        private Panel? _buttonPanel;
+        private Button? _btnClose;
+        private Button? _btnMinimize;
+
+        public CopyProgressForm(ILogger? logger = null)
         {
-            InitializeComponent();
+            _logger = logger;
+            
+            // Initialize diagnostics if logger available
+            if (_logger != null)
+            {
+                FormDiagnostics.Initialize(_logger);
+                FormDiagnostics.LogFormInitialization("CopyProgressForm");
+            }
+            
+            InitializeModernComponent();
+            
+            if (_logger != null)
+            {
+                FormDiagnostics.LogFormLoadComplete("CopyProgressForm");
+            }
         }
 
-        private void InitializeComponent()
+        private void InitializeModernComponent()
         {
-            this.Text = "Copy Operation Progress";
-            this.Size = new Size(900, 650); // Increased width from 700 to 900, height from 550 to 650
+            if (_logger != null)
+                FormDiagnostics.StartPerformanceTracking("CopyProgress_Initialization");
+            
+            this.Text = "📦 File Copy Operation - Schedule I Development Manager";
+            this.Size = new Size(1000, 700);
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
-            this.MinimizeBox = false;
+            this.MinimizeBox = true;
+            this.BackColor = ModernUITheme.Colors.BackgroundPrimary;
             
             // Load the application icon
             this.Icon = MainForm.LoadApplicationIcon();
 
-            // Apply dark theme to the form
-            ApplyDarkTheme();
+            CreateModernLayout();
+            SetupModernEventHandlers();
+            
+            if (_logger != null)
+                FormDiagnostics.EndPerformanceTracking("CopyProgress_Initialization");
+        }
 
-            // Status label
-            lblStatus = new Label
-            {
-                Text = "Preparing to copy files...",
-                Location = new Point(20, 20),
-                Size = new Size(850, 25), // Increased width from 650 to 850
-                Font = new Font(this.Font.FontFamily, 10, FontStyle.Bold)
-            };
+        private void CreateModernLayout()
+        {
+            // Main container
+            _mainPanel = new Panel();
+            _mainPanel.Size = new Size(950, 650);
+            _mainPanel.Location = new Point(25, 25);
+            _mainPanel.BackColor = ModernUITheme.Colors.BackgroundPrimary;
 
-            // Console log textbox with horizontal and vertical scrolling
-            txtConsoleLog = new RichTextBox
-            {
-                Location = new Point(20, 60),
-                Size = new Size(850, 420), // Increased width from 650 to 850, height from 320 to 420
-                Font = new Font("Consolas", 9),
-                ReadOnly = true,
-                BackColor = Color.Black,
-                ForeColor = Color.Lime,
-                ScrollBars = RichTextBoxScrollBars.Both, // Changed from Vertical to Both for horizontal and vertical scrolling
-                WordWrap = false // Disable word wrap to enable horizontal scrolling
-            };
+            // Header section
+            _headerPanel = ModernControls.CreateSectionPanel("", new Size(950, 90));
+            _headerPanel.Location = new Point(0, 0);
+            _headerPanel.BackColor = ModernUITheme.Colors.BackgroundSecondary;
 
-            // Progress bar
-            progressBar = new ProgressBar
-            {
-                Location = new Point(20, 500), // Moved down from 400 to 500
-                Size = new Size(850, 23), // Increased width from 650 to 850
-                Minimum = 0,
-                Maximum = 100,
-                Value = 0
-            };
+            _titleLabel = ModernControls.CreateHeadingLabel("📦 File Copy Operation", true);
+            _titleLabel.Location = new Point(15, 15);
+            _titleLabel.Size = new Size(600, 30);
+            _titleLabel.ForeColor = ModernUITheme.Colors.AccentPrimary;
 
-            // Cancel button (initially disabled)
-            btnClose = new Button
-            {
-                Text = "Cancel",
-                Location = new Point(400, 550), // Moved down from 440 to 550, centered for wider form
-                Size = new Size(100, 30),
-                Enabled = false
-            };
+            _statusLabel = ModernControls.CreateStatusLabel("🔄 Preparing to copy files...", ModernUITheme.Colors.AccentInfo);
+            _statusLabel.Location = new Point(15, 50);
+            _statusLabel.Size = new Size(920, 25);
 
-            btnClose.Click += BtnClose_Click;
+            _headerPanel.Controls.AddRange(new Control[] { _titleLabel, _statusLabel });
 
-            // Apply dark theme to controls (except console output)
-            ApplyDarkThemeToControl(lblStatus);
-            ApplyDarkThemeToControl(progressBar);
-            ApplyDarkThemeToControl(btnClose);
+            // Progress section
+            _progressPanel = ModernControls.CreateSectionPanel("Progress", new Size(950, 110));
+            _progressPanel.Location = new Point(0, 100);
+            _progressPanel.BackColor = ModernUITheme.Colors.BackgroundSecondary;
 
-            // Add controls to form
-            this.Controls.AddRange(new Control[]
-            {
-                lblStatus,
-                txtConsoleLog,
-                progressBar,
-                btnClose
+            _progressLabel = ModernControls.CreateFieldLabel("🎯 Files processed: 0 / 0");
+            _progressLabel.Location = new Point(15, 40);
+            _progressLabel.Size = new Size(600, 25);
+
+            _progressPercent = ModernControls.CreateFieldLabel("0%");
+            _progressPercent.Location = new Point(850, 40);
+            _progressPercent.Size = new Size(85, 25);
+            _progressPercent.TextAlign = ContentAlignment.MiddleRight;
+            _progressPercent.ForeColor = ModernUITheme.Colors.AccentPrimary;
+            _progressPercent.Font = ModernUITheme.Typography.BodyLarge;
+
+            _modernProgressBar = new ProgressBar();
+            _modernProgressBar.Location = new Point(15, 75);
+            _modernProgressBar.Size = new Size(920, 20);
+            _modernProgressBar.Minimum = 0;
+            _modernProgressBar.Maximum = 100;
+            _modernProgressBar.Value = 0;
+            _modernProgressBar.Style = ProgressBarStyle.Continuous;
+
+            _progressPanel.Controls.AddRange(new Control[] { _progressLabel, _progressPercent, _modernProgressBar });
+
+            // Log section
+            _logPanel = ModernControls.CreateSectionPanel("📝 Operation Log", new Size(950, 370));
+            _logPanel.Location = new Point(0, 220);
+
+            _consoleLog = new RichTextBox();
+            _consoleLog.Location = new Point(15, 40);
+            _consoleLog.Size = new Size(920, 315);
+            _consoleLog.Font = ModernUITheme.Typography.MonospaceBody;
+            _consoleLog.ReadOnly = true;
+            _consoleLog.BackColor = ModernUITheme.Colors.LogBackground;
+            _consoleLog.ForeColor = ModernUITheme.Colors.LogText;
+            _consoleLog.ScrollBars = RichTextBoxScrollBars.Both;
+            _consoleLog.WordWrap = false;
+            _consoleLog.BorderStyle = BorderStyle.None;
+
+            _logPanel.Controls.Add(_consoleLog);
+
+            // Button panel
+            _buttonPanel = new Panel();
+            _buttonPanel.Size = new Size(950, 70);
+            _buttonPanel.Location = new Point(0, 580);
+            _buttonPanel.BackColor = ModernUITheme.Colors.BackgroundSecondary;
+
+            _btnMinimize = ModernControls.CreateActionButton("🔽 Minimize", ModernUITheme.ButtonStyle.Secondary);
+            _btnMinimize.Location = new Point(15, 18);
+            _btnMinimize.Size = new Size(120, 35);
+            _btnMinimize.Enabled = true;
+
+            _btnClose = ModernControls.CreateActionButton("❌ Cancel", ModernUITheme.ButtonStyle.Danger);
+            _btnClose.Location = new Point(825, 18);
+            _btnClose.Size = new Size(110, 35);
+            _btnClose.Enabled = false;
+
+            _buttonPanel.Controls.AddRange(new Control[] { _btnMinimize, _btnClose });
+
+            // Add all panels to main panel
+            _mainPanel.Controls.AddRange(new Control[] { 
+                _headerPanel, _progressPanel, _logPanel, _buttonPanel 
             });
+
+            // Add main panel to form
+            this.Controls.Add(_mainPanel);
+
+            if (_logger != null)
+                FormDiagnostics.LogBulkThemeApplication("CopyProgressForm", 15, 15);
+        }
+
+        private void SetupModernEventHandlers()
+        {
+            if (_logger != null)
+                FormDiagnostics.LogUserInteraction("SetupEventHandlers", "CopyProgressForm");
+            
+            if (_btnClose != null)
+            {
+                _btnClose.Click += BtnClose_Click;
+                if (_logger != null)
+                    FormDiagnostics.LogUserInteraction("EventHandlerAttached", "CloseButton");
+            }
+            
+            if (_btnMinimize != null)
+            {
+                _btnMinimize.Click += BtnMinimize_Click;
+                if (_logger != null)
+                    FormDiagnostics.LogUserInteraction("EventHandlerAttached", "MinimizeButton");
+            }
         }
 
         private void BtnClose_Click(object? sender, EventArgs e)
         {
+            if (_logger != null)
+                FormDiagnostics.LogUserInteraction("CloseButtonClick", "CopyProgressForm", isCopyComplete ? "Operation completed" : "User cancelled");
             this.Close();
+        }
+
+        private void BtnMinimize_Click(object? sender, EventArgs e)
+        {
+            if (_logger != null)
+                FormDiagnostics.LogUserInteraction("MinimizeButtonClick", "CopyProgressForm");
+            this.WindowState = FormWindowState.Minimized;
         }
 
         public void LogMessage(string message)
         {
-            if (txtConsoleLog.InvokeRequired)
+            if (_consoleLog?.InvokeRequired == true)
             {
-                txtConsoleLog.Invoke(new Action<string>(LogMessage), message);
+                _consoleLog.Invoke(new Action<string>(LogMessage), message);
                 return;
             }
 
-            txtConsoleLog.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}\n");
-            txtConsoleLog.ScrollToCaret();
+            if (_consoleLog != null)
+            {
+                var timestamp = DateTime.Now.ToString("HH:mm:ss");
+                _consoleLog.AppendText($"[{timestamp}] {message}\n");
+                _consoleLog.ScrollToCaret();
+                
+                if (_logger != null)
+                    FormDiagnostics.LogUserInteraction("LogMessage", "CopyProgressForm", message.Length.ToString());
+            }
         }
 
-        public void UpdateProgress(int value)
+        public void UpdateProgress(int value, int currentFiles = 0, int totalFiles = 0)
         {
-            if (progressBar.InvokeRequired)
+            if (_modernProgressBar?.InvokeRequired == true)
             {
-                progressBar.Invoke(new Action<int>(UpdateProgress), value);
+                _modernProgressBar.Invoke(new Action<int, int, int>(UpdateProgress), value, currentFiles, totalFiles);
                 return;
             }
 
-            progressBar.Value = Math.Min(value, 100);
+            if (_modernProgressBar != null)
+            {
+                _modernProgressBar.Value = Math.Min(value, 100);
+                
+                if (_progressPercent != null)
+                    _progressPercent.Text = $"{value}%";
+                
+                if (_progressLabel != null && totalFiles > 0)
+                    _progressLabel.Text = $"🎯 Files processed: {currentFiles} / {totalFiles}";
+                
+                if (_logger != null)
+                    FormDiagnostics.LogUserInteraction("UpdateProgress", "CopyProgressForm", $"{value}% ({currentFiles}/{totalFiles})");
+            }
         }
 
         public void UpdateStatus(string status)
         {
-            if (lblStatus.InvokeRequired)
+            if (_statusLabel?.InvokeRequired == true)
             {
-                lblStatus.Invoke(new Action<string>(UpdateStatus), status);
+                _statusLabel.Invoke(new Action<string>(UpdateStatus), status);
                 return;
             }
 
-            lblStatus.Text = status;
+            if (_statusLabel != null)
+            {
+                _statusLabel.Text = status;
+                
+                if (_logger != null)
+                    FormDiagnostics.LogUserInteraction("UpdateStatus", "CopyProgressForm", status);
+            }
         }
 
         public void SetCopyComplete()
@@ -139,10 +268,25 @@ namespace ScheduleIDevelopementEnvironementManager
             }
 
             isCopyComplete = true;
-            btnClose.Enabled = true;
-            btnClose.Text = "Close"; // Change from Cancel to Close when complete
-            lblStatus.Text = "Copy operation completed successfully!";
-            lblStatus.ForeColor = Color.Green;
+            
+            if (_btnClose != null)
+            {
+                _btnClose.Enabled = true;
+                _btnClose.Text = "✅ Close";
+                // Update button style to success
+                _btnClose.BackColor = ModernUITheme.Colors.AccentSuccess;
+            }
+            
+            if (_statusLabel != null)
+            {
+                _statusLabel.Text = "✅ Copy operation completed successfully!";
+                _statusLabel.ForeColor = ModernUITheme.Colors.AccentSuccess;
+            }
+            
+            LogMessage("🎉 Copy operation completed successfully!");
+            
+            if (_logger != null)
+                FormDiagnostics.LogUserInteraction("SetCopyComplete", "CopyProgressForm", "Operation completed successfully");
         }
 
         public void SetCopyFailed(string errorMessage)
@@ -154,10 +298,24 @@ namespace ScheduleIDevelopementEnvironementManager
             }
 
             isCopyComplete = true;
-            btnClose.Enabled = true;
-            btnClose.Text = "Close"; // Change from Cancel to Close when failed
-            lblStatus.Text = $"Copy operation failed: {errorMessage}";
-            lblStatus.ForeColor = Color.Red;
+            
+            if (_btnClose != null)
+            {
+                _btnClose.Enabled = true;
+                _btnClose.Text = "❌ Close";
+                // Keep danger style for failed operations
+            }
+            
+            if (_statusLabel != null)
+            {
+                _statusLabel.Text = $"❌ Copy operation failed: {errorMessage}";
+                _statusLabel.ForeColor = ModernUITheme.Colors.AccentDanger;
+            }
+            
+            LogMessage($"❌ Copy operation failed: {errorMessage}");
+            
+            if (_logger != null)
+                FormDiagnostics.LogUserInteraction("SetCopyFailed", "CopyProgressForm", errorMessage);
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -178,61 +336,5 @@ namespace ScheduleIDevelopementEnvironementManager
             base.OnFormClosing(e);
         }
 
-        #region Dark Theme Methods
-
-        /// <summary>
-        /// Applies dark theme to the form
-        /// </summary>
-        private void ApplyDarkTheme()
-        {
-            // Set form background to dark gray
-            this.BackColor = Color.FromArgb(45, 45, 48);
-            this.ForeColor = Color.White;
-        }
-
-        /// <summary>
-        /// Applies dark theme to individual controls
-        /// </summary>
-        /// <param name="control">The control to apply dark theme to</param>
-        private void ApplyDarkThemeToControl(Control? control)
-        {
-            if (control == null) return;
-
-            // Apply dark theme based on control type
-            switch (control)
-            {
-                case Form form:
-                    form.BackColor = Color.FromArgb(45, 45, 48);
-                    form.ForeColor = Color.White;
-                    break;
-
-                case Label label:
-                    label.BackColor = Color.Transparent;
-                    label.ForeColor = Color.White;
-                    break;
-
-                case Button button:
-                    button.BackColor = Color.FromArgb(0, 122, 204); // Professional blue
-                    button.ForeColor = Color.White;
-                    button.FlatStyle = FlatStyle.Flat;
-                    button.FlatAppearance.BorderColor = Color.FromArgb(0, 100, 180);
-                    button.FlatAppearance.MouseOverBackColor = Color.FromArgb(0, 140, 230);
-                    button.FlatAppearance.MouseDownBackColor = Color.FromArgb(0, 100, 180);
-                    break;
-
-                case ProgressBar progressBar:
-                    progressBar.BackColor = Color.FromArgb(30, 30, 30);
-                    progressBar.ForeColor = Color.FromArgb(0, 122, 204);
-                    break;
-            }
-
-            // Recursively apply to child controls
-            foreach (Control childControl in control.Controls)
-            {
-                ApplyDarkThemeToControl(childControl);
-            }
-        }
-
-        #endregion
     }
 }

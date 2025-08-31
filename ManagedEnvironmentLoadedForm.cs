@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ScheduleIDevelopementEnvironementManager.Models;
 using ScheduleIDevelopementEnvironementManager.Services;
+using ScheduleIDevelopementEnvironementManager.Forms;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -91,7 +92,7 @@ namespace ScheduleIDevelopementEnvironementManager
         private void InitializeAdvancedForm()
         {
             this.Text = "Schedule I - Development Environment Manager";
-            this.Size = new Size(1600, 750);
+            this.Size = new Size(1600, 575);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
             this.MaximizeBox = true;
@@ -253,18 +254,26 @@ namespace ScheduleIDevelopementEnvironementManager
                 ReadOnly = true
             };
 
+            var launchCommandColumn = new DataGridViewTextBoxColumn
+            {
+                Name = "LaunchCommand",
+                HeaderText = "Launch",
+                Width = 80,
+                ReadOnly = true
+            };
+
             var statusDescColumn = new DataGridViewTextBoxColumn
             {
                 Name = "StatusDesc",
                 HeaderText = "Status Description",
-                Width = 460,
+                Width = 380,
                 ReadOnly = true
             };
 
             dgvBranches.Columns.AddRange(new DataGridViewColumn[]
             {
                 statusColumn, branchColumn, sizeColumn, filesColumn, 
-                modifiedColumn, buildIdColumn, statusDescColumn
+                modifiedColumn, buildIdColumn, launchCommandColumn, statusDescColumn
             });
 
             this.Controls.Add(dgvBranches);
@@ -499,7 +508,12 @@ namespace ScheduleIDevelopementEnvironementManager
                 row.Cells[3].Value = branch.FormattedFileCount;
                 row.Cells[4].Value = branch.FormattedLastModified;
                 row.Cells[5].Value = string.IsNullOrEmpty(branch.LocalBuildId) ? "---" : branch.LocalBuildId;
-                row.Cells[6].Value = branch.StatusDescription;
+                
+                // Custom launch command indicator
+                var hasCustomCommand = _config.HasCustomLaunchCommand(branch.BranchName);
+                row.Cells[6].Value = hasCustomCommand ? "🎯 Custom" : "🚀 Default";
+                
+                row.Cells[7].Value = branch.StatusDescription;
                 row.Tag = branch;
                 
                 dgvBranches.Rows.Add(row);
@@ -672,8 +686,33 @@ namespace ScheduleIDevelopementEnvironementManager
 
             if (_selectedBranch?.IsInstalled == true)
             {
-                contextMenu.Items.Add("🚀 Launch Game", null, async (s, e) => await LaunchSelectedBranchAsync());
+                // Check if custom launch command exists
+                var hasCustomCommand = _config.HasCustomLaunchCommand(_selectedBranch.BranchName);
+                
+                if (hasCustomCommand)
+                {
+                    contextMenu.Items.Add("🎯 Launch with Custom Command", null, async (s, e) => await LaunchWithCustomCommandAsync());
+                    contextMenu.Items.Add("🚀 Launch Game (Default)", null, async (s, e) => await LaunchSelectedBranchAsync());
+                }
+                else
+                {
+                    contextMenu.Items.Add("🚀 Launch Game", null, async (s, e) => await LaunchSelectedBranchAsync());
+                }
+                
                 contextMenu.Items.Add("📁 Open Folder", null, async (s, e) => await OpenSelectedBranchFolderAsync());
+                contextMenu.Items.Add(new ToolStripSeparator());
+                
+                // Custom launch command management
+                if (hasCustomCommand)
+                {
+                    contextMenu.Items.Add("⚙️ Edit Custom Launch Command", null, (s, e) => EditCustomLaunchCommand());
+                    contextMenu.Items.Add("❌ Remove Custom Launch Command", null, (s, e) => RemoveCustomLaunchCommand());
+                }
+                else
+                {
+                    contextMenu.Items.Add("⚙️ Set Custom Launch Command", null, (s, e) => SetCustomLaunchCommand());
+                }
+                
                 contextMenu.Items.Add(new ToolStripSeparator());
                 contextMenu.Items.Add("🗑️ Delete Branch", null, async (s, e) => await DeleteSelectedBranchAsync());
             }
@@ -687,7 +726,39 @@ namespace ScheduleIDevelopementEnvironementManager
 
         private async void BtnLaunch_Click(object? sender, EventArgs e)
         {
-            await LaunchSelectedBranchAsync();
+            if (_selectedBranch == null || !_selectedBranch.IsInstalled) return;
+
+            // Check if custom launch command exists
+            var hasCustomCommand = _config.HasCustomLaunchCommand(_selectedBranch.BranchName);
+            
+            if (hasCustomCommand)
+            {
+                // Show options dialog
+                var result = MessageBox.Show(
+                    $"This branch has a custom launch command configured.\n\n" +
+                    $"Would you like to:\n" +
+                    $"• Yes: Launch with custom command\n" +
+                    $"• No: Launch with default method\n" +
+                    $"• Cancel: Don't launch",
+                    "Launch Options",
+                    MessageBoxButtons.YesNoCancel,
+                    MessageBoxIcon.Question);
+
+                switch (result)
+                {
+                    case DialogResult.Yes:
+                        await LaunchWithCustomCommandAsync();
+                        break;
+                    case DialogResult.No:
+                        await LaunchSelectedBranchAsync();
+                        break;
+                    // Cancel does nothing
+                }
+            }
+            else
+            {
+                await LaunchSelectedBranchAsync();
+            }
         }
 
         private async void BtnDelete_Click(object? sender, EventArgs e)
@@ -768,6 +839,105 @@ namespace ScheduleIDevelopementEnvironementManager
                 UpdateStatus($"Error launching {_selectedBranch.DisplayName}");
                 MessageBox.Show($"Error launching {_selectedBranch.DisplayName}: {ex.Message}",
                     "Launch Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async Task LaunchWithCustomCommandAsync()
+        {
+            if (_selectedBranch == null || !_selectedBranch.IsInstalled) return;
+
+            try
+            {
+                var customCommand = _config.GetCustomLaunchCommand(_selectedBranch.BranchName);
+                if (string.IsNullOrWhiteSpace(customCommand))
+                {
+                    MessageBox.Show("No custom launch command is set for this branch.", "Custom Launch", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                UpdateStatus($"Launching {_selectedBranch.DisplayName} with custom command...");
+                _logger.LogInformation("Executing custom launch command for branch {BranchName}: {Command}", 
+                    _selectedBranch.BranchName, customCommand);
+
+                CustomLaunchCommandDialog.ExecuteCommand(customCommand);
+                UpdateStatus($"Custom launch command executed for {_selectedBranch.DisplayName}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error executing custom launch command for branch {BranchName}", _selectedBranch.BranchName);
+                UpdateStatus($"Error executing custom command for {_selectedBranch.DisplayName}");
+                MessageBox.Show($"Error executing custom launch command: {ex.Message}",
+                    "Custom Launch Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void SetCustomLaunchCommand()
+        {
+            if (_selectedBranch == null) return;
+
+            try
+            {
+                var existingCommand = _config.GetCustomLaunchCommand(_selectedBranch.BranchName);
+                using var dialog = new CustomLaunchCommandDialog(_selectedBranch.BranchName, existingCommand);
+                
+                if (dialog.ShowDialog(this) == DialogResult.OK)
+                {
+                    var newCommand = dialog.BuildCommand();
+                    _config.SetCustomLaunchCommand(_selectedBranch.BranchName, newCommand);
+                    
+                    // Save configuration
+                    _ = Task.Run(async () => await _configService.SaveConfigurationAsync(_config));
+                    
+                    _logger.LogInformation("Custom launch command set for branch {BranchName}: {Command}", 
+                        _selectedBranch.BranchName, newCommand);
+                    
+                    UpdateStatus($"Custom launch command set for {_selectedBranch.DisplayName}");
+                    MessageBox.Show("Custom launch command saved successfully!", "Success", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting custom launch command for branch {BranchName}", _selectedBranch.BranchName);
+                MessageBox.Show($"Error setting custom launch command: {ex.Message}",
+                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void EditCustomLaunchCommand()
+        {
+            SetCustomLaunchCommand(); // Same dialog, different context
+        }
+
+        private void RemoveCustomLaunchCommand()
+        {
+            if (_selectedBranch == null) return;
+
+            try
+            {
+                var result = MessageBox.Show(
+                    $"Are you sure you want to remove the custom launch command for {_selectedBranch.DisplayName}?",
+                    "Remove Custom Launch Command",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+
+                if (result == DialogResult.Yes)
+                {
+                    _config.SetCustomLaunchCommand(_selectedBranch.BranchName, "");
+                    
+                    // Save configuration
+                    _ = Task.Run(async () => await _configService.SaveConfigurationAsync(_config));
+                    
+                    _logger.LogInformation("Custom launch command removed for branch {BranchName}", _selectedBranch.BranchName);
+                    UpdateStatus($"Custom launch command removed for {_selectedBranch.DisplayName}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error removing custom launch command for branch {BranchName}", _selectedBranch.BranchName);
+                MessageBox.Show($"Error removing custom launch command: {ex.Message}",
+                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
