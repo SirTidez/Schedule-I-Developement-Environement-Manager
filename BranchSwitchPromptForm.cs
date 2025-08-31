@@ -10,6 +10,8 @@ namespace ScheduleIDevelopementEnvironementManager
     {
         private readonly ILogger? _logger;
         
+        // UI Controls (removed unused legacy fields to fix warnings)
+        
         // Modern UI Controls
         private Panel? _mainPanel;
         private Label? _titleLabel;
@@ -51,7 +53,7 @@ namespace ScheduleIDevelopementEnvironementManager
                 FormDiagnostics.StartPerformanceTracking("BranchSwitchPrompt_Initialization");
             
             this.Text = "🔄 Branch Switch Assistant - Schedule I Development Manager";
-            this.Size = new Size(700, 620);
+            this.Size = new Size(700, 670);
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
@@ -61,106 +63,10 @@ namespace ScheduleIDevelopementEnvironementManager
             // Load the application icon
             this.Icon = MainForm.LoadApplicationIcon();
 
-<<<<<<< Updated upstream
             // Apply dark theme to the form
             ApplyDarkTheme();
-
-            // Main message
-            lblMessage = new Label
-            {
-                Text = "Please switch to the next branch in Steam:",
-                Location = new Point(20, 20),
-                Size = new Size(450, 40),
-                Font = new Font(this.Font.FontFamily, 10, FontStyle.Bold),
-                TextAlign = ContentAlignment.MiddleCenter
-            };
-
-            // Current branch info
-            lblCurrentBranch = new Label
-            {
-                Text = $"Current Branch: {CurrentBranch}",
-                Location = new Point(20, 80),
-                Size = new Size(450, 25),
-                Font = new Font(this.Font.FontFamily, 9),
-                TextAlign = ContentAlignment.MiddleCenter
-            };
-
-            // Next branch info
-            lblNextBranch = new Label
-            {
-                Text = $"Next Branch: {NextBranch}",
-                Location = new Point(20, 110),
-                Size = new Size(450, 25),
-                Font = new Font(this.Font.FontFamily, 9, FontStyle.Bold),
-                TextAlign = ContentAlignment.MiddleCenter,
-                ForeColor = Color.Blue
-            };
-
-            // Instructions
-            var lblInstructions = new Label
-            {
-                Text = "1. Open Steam\n2. Right-click on 'Schedule I' in your library\n3. Select 'Properties'\n4. Go to 'Betas' tab\n5. Select the branch from the dropdown\n6. Close the properties window\n7. Click OK when ready to continue",
-                Location = new Point(20, 150),
-                Size = new Size(450, 100),
-                Font = new Font(this.Font.FontFamily, 8),
-                TextAlign = ContentAlignment.TopLeft
-            };
-
-            // Important note about waiting for download completion
-            var lblDownloadNote = new Label
-            {
-                Text = "⚠️ IMPORTANT: After switching branches, ensure that Steam has fully downloaded and installed the new branch before clicking OK. The game should show as 'Ready to Play' in your Steam library.",
-                Location = new Point(20, 270),
-                Size = new Size(450, 60),
-                Font = new Font(this.Font.FontFamily, 8, FontStyle.Bold),
-                TextAlign = ContentAlignment.TopLeft,
-                ForeColor = Color.Orange
-            };
-
-            // OK button
-            btnOk = new Button
-            {
-                Text = "OK - Branch Switched",
-                Location = new Point(150, 360), // Moved down from 220 to 360
-                Size = new Size(120, 30),
-                DialogResult = DialogResult.OK
-            };
-
-            btnOk.Click += BtnOk_Click;
-
-            // Cancel button
-            btnCancel = new Button
-            {
-                Text = "Cancel",
-                Location = new Point(290, 360), // Moved down from 220 to 360
-                Size = new Size(80, 30),
-                DialogResult = DialogResult.Cancel
-            };
-
-            // Apply dark theme to all controls
-            ApplyDarkThemeToControl(lblMessage);
-            ApplyDarkThemeToControl(lblCurrentBranch);
-            ApplyDarkThemeToControl(lblNextBranch);
-            ApplyDarkThemeToControl(lblInstructions);
-            ApplyDarkThemeToControl(lblDownloadNote);
-            ApplyDarkThemeToControl(btnOk);
-            ApplyDarkThemeToControl(btnCancel);
-
-            // Add controls to form
-            this.Controls.AddRange(new Control[]
-            {
-                lblMessage,
-                lblCurrentBranch,
-                lblNextBranch,
-                lblInstructions,
-                lblDownloadNote,
-                btnOk,
-                btnCancel
-            });
-=======
             CreateModernLayout();
             SetupModernEventHandlers();
->>>>>>> Stashed changes
 
             // Set default button
             this.AcceptButton = _btnConfirm;
@@ -196,7 +102,7 @@ namespace ScheduleIDevelopementEnvironementManager
             // Branch info panel
             _branchInfoPanel = ModernControls.CreateInfoCard("Branch Information", "");
             _branchInfoPanel.Size = new Size(600, 110);
-            _branchInfoPanel.Location = new Point(25, 110);
+            _branchInfoPanel.Location = new Point(25, 105);
 
             _currentBranchLabel = ModernControls.CreateFieldLabel($"📍 Current Branch: {CurrentBranch}");
             _currentBranchLabel.Location = new Point(15, 40);
@@ -305,6 +211,62 @@ namespace ScheduleIDevelopementEnvironementManager
             }
             base.OnFormClosing(e);
         }
+
+        /// <summary>
+        /// Applies dark theme to the form
+        /// </summary>
+        private void ApplyDarkTheme()
+        {
+            this.BackColor = ModernUITheme.Colors.BackgroundPrimary;
+            this.ForeColor = ModernUITheme.Colors.TextPrimary;
+        }
+
+        /// <summary>
+        /// Applies dark theme to individual controls
+        /// </summary>
+        /// <param name="control">The control to apply dark theme to</param>
+        private void ApplyDarkThemeToControl(Control? control)
+        {
+            if (control == null) return;
+
+            // Apply dark theme based on control type
+            switch (control)
+            {
+                case Form form:
+                    form.BackColor = ModernUITheme.Colors.BackgroundPrimary;
+                    form.ForeColor = ModernUITheme.Colors.TextPrimary;
+                    break;
+                    
+                case Button button:
+                    button.BackColor = ModernUITheme.Colors.BackgroundSecondary;
+                    button.ForeColor = ModernUITheme.Colors.TextPrimary;
+                    button.FlatStyle = FlatStyle.Flat;
+                    button.FlatAppearance.BorderColor = ModernUITheme.Colors.BorderPrimary;
+                    break;
+                    
+                case Label label:
+                    label.BackColor = Color.Transparent;
+                    label.ForeColor = ModernUITheme.Colors.TextPrimary;
+                    break;
+                    
+                case TextBox textBox:
+                    textBox.BackColor = ModernUITheme.Colors.BackgroundSecondary;
+                    textBox.ForeColor = ModernUITheme.Colors.TextPrimary;
+                    textBox.BorderStyle = BorderStyle.FixedSingle;
+                    break;
+                    
+                case Panel panel:
+                    panel.BackColor = ModernUITheme.Colors.BackgroundSecondary;
+                    break;
+            }
+
+            // Apply theme to child controls recursively
+            foreach (Control childControl in control.Controls)
+            {
+                ApplyDarkThemeToControl(childControl);
+            }
+        }
+
 
     }
 }

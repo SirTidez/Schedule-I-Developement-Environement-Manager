@@ -42,7 +42,7 @@ namespace ScheduleIDevelopementEnvironementManager
             FormDiagnostics.StartPerformanceTracking("ModernLibraryDialog_Initialization");
             
             this.Text = "🏛️ Steam Library Selection - Choose Development Library";
-            this.Size = new Size(900, 620); // Increased height to accommodate new spacing
+            this.Size = new Size(900, 635); // Increased height to accommodate new spacing
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
@@ -81,15 +81,15 @@ namespace ScheduleIDevelopementEnvironementManager
             titleLabel.Size = new Size(650, 30);
 
             var descLabel = ModernControls.CreateStatusLabel("Multiple Steam libraries detected. Select the library containing Schedule I.", ModernUITheme.Colors.TextSecondary);
-            descLabel.Location = new Point(15, 50);
+            descLabel.Location = new Point(15, 55);
             descLabel.Size = new Size(820, 25);
 
             headerPanel.Controls.AddRange(new Control[] { titleLabel, descLabel });
 
             // Library cards container (scrollable)
             _libraryContainer = new Panel();
-            _libraryContainer.Size = new Size(850, 350);
-            _libraryContainer.Location = new Point(0, 110);
+            _libraryContainer.Size = new Size(857, 350);
+            _libraryContainer.Location = new Point(-2, 110);
             _libraryContainer.BackColor = ModernUITheme.Colors.BackgroundPrimary;
             _libraryContainer.AutoScroll = true;
 
@@ -285,7 +285,7 @@ namespace ScheduleIDevelopementEnvironementManager
             if (isRecommended)
             {
                 var badge = ModernControls.CreateStatusLabel("⭐ RECOMMENDED", ModernUITheme.Colors.AccentWarning);
-                badge.Location = new Point(670, 10);
+                badge.Location = new Point(650, 45);
                 badge.Size = new Size(130, 20);
                 badge.Font = ModernUITheme.Typography.ButtonSmall;
                 card.Controls.Add(badge);

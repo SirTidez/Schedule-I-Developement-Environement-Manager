@@ -83,6 +83,9 @@ namespace ScheduleIDevelopementEnvironementManager.Services
                     ExecutablePath = Path.Combine(config.ManagedEnvironmentPath, branchName, "Schedule I.exe")
                 };
                 
+                // Always populate saved build ID from config, regardless of installation status
+                branchInfo.LocalBuildId = config.GetBuildIdForBranch(branchInfo.BranchName);
+                
                 // Check if branch is installed
                 if (branchInfo.IsInstalled)
                 {
@@ -121,9 +124,6 @@ namespace ScheduleIDevelopementEnvironementManager.Services
                 var (size, count) = await CalculateDirectoryStatsAsync(branchInfo.FolderPath);
                 branchInfo.DirectorySize = size;
                 branchInfo.FileCount = count;
-                
-                // Get local build ID
-                branchInfo.LocalBuildId = config.GetBuildIdForBranch(branchInfo.BranchName);
                 
                 // Get current Steam build ID for comparison
                 branchInfo.SteamBuildId = await _steamService.GetCurrentBuildIdForBranchAsync(branchInfo.BranchName) ?? string.Empty;

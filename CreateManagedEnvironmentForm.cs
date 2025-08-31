@@ -48,6 +48,7 @@ namespace ScheduleIDevelopementEnvironementManager
         private CheckBox? chkAlternateBranch;
         private CheckBox? chkAlternateBetaBranch;
         private Label? lblStatus;
+        private RichTextBox? rtbConfigConsole;
 
         public CreateManagedEnvironmentForm()
         {
@@ -499,7 +500,11 @@ namespace ScheduleIDevelopementEnvironementManager
                 lblStatus!.Text = "Managed environment created successfully!";
                 lblStatus!.ForeColor = Color.Green;
                 
-                // Save configuration
+                // Save configuration to the managed environment directory
+                if (!string.IsNullOrEmpty(_config.ManagedEnvironmentPath))
+                {
+                    _configService.SetManagedEnvironmentPath(_config.ManagedEnvironmentPath);
+                }
                 await _configService.SaveConfigurationAsync(_config);
                 
                 MessageBox.Show("Managed environment created successfully!", "Success", 
@@ -820,7 +825,7 @@ namespace ScheduleIDevelopementEnvironementManager
             FormDiagnostics.StartPerformanceTracking("WizardForm_Initialization");
             
             this.Text = "🧙‍♂️ Environment Setup Wizard - Schedule I Development Manager";
-            this.Size = new Size(1000, 700);
+            this.Size = new Size(1000, 800);
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
@@ -840,7 +845,7 @@ namespace ScheduleIDevelopementEnvironementManager
             FormDiagnostics.LogUserInteraction("CreateWizardLayout", "CreateManagedEnvironmentForm");
             
             _mainPanel = new Panel();
-            _mainPanel.Size = new Size(950, 650);
+            _mainPanel.Size = new Size(950, 750);
             _mainPanel.Location = new Point(25, 25);
             _mainPanel.BackColor = ModernUITheme.Colors.BackgroundPrimary;
 
@@ -864,37 +869,57 @@ namespace ScheduleIDevelopementEnvironementManager
             _headerPanel.Controls.AddRange(new Control[] { _stepLabel, _titleLabel, _descriptionLabel });
 
             _contentPanel = new Panel();
-            _contentPanel.Size = new Size(950, 460);
+            _contentPanel.Size = new Size(950, 420);
             _contentPanel.Location = new Point(0, 100);
             _contentPanel.BackColor = ModernUITheme.Colors.BackgroundPrimary;
 
             _navigationPanel = new Panel();
-            _navigationPanel.Size = new Size(950, 90);
-            _navigationPanel.Location = new Point(0, 560);
+            _navigationPanel.Size = new Size(950, 230);
+            _navigationPanel.Location = new Point(0, 520);
             _navigationPanel.BackColor = ModernUITheme.Colors.BackgroundSecondary;
 
+            // Create config console
+            var consoleLabel = ModernControls.CreateFieldLabel("Configuration Console:");
+            consoleLabel.Location = new Point(15, 15);
+            consoleLabel.Size = new Size(200, 20);
+            
+            rtbConfigConsole = new RichTextBox
+            {
+                Location = new Point(15, 40),
+                Size = new Size(920, 130),
+                BackColor = ModernUITheme.Colors.LogBackground,
+                ForeColor = ModernUITheme.Colors.LogText,
+                Font = ModernUITheme.Typography.MonospaceSmall,
+                BorderStyle = BorderStyle.FixedSingle,
+                ReadOnly = true,
+                Text = "Environment Setup Wizard initialized...\n" +
+                       "Ready to configure development environment.\n" +
+                       "Step 1: Steam Library Detection\n"
+            };
+            
+            // Position buttons at bottom of navigation panel
             _btnPrevious = ModernControls.CreateActionButton("⬅️ Previous", ModernUITheme.ButtonStyle.Secondary);
-            _btnPrevious.Location = new Point(700, 25);
-            _btnPrevious.Size = new Size(120, 40);
+            _btnPrevious.Location = new Point(700, 185);
+            _btnPrevious.Size = new Size(120, 35);
             _btnPrevious.Enabled = false;
 
             _btnNext = ModernControls.CreateActionButton("Next ➡️", ModernUITheme.ButtonStyle.Primary);
-            _btnNext.Location = new Point(825, 25);
-            _btnNext.Size = new Size(120, 40);
+            _btnNext.Location = new Point(825, 185);
+            _btnNext.Size = new Size(120, 35);
 
             _btnCancel = ModernControls.CreateActionButton("❌ Cancel", ModernUITheme.ButtonStyle.Danger);
-            _btnCancel.Location = new Point(15, 25);
-            _btnCancel.Size = new Size(120, 40);
+            _btnCancel.Location = new Point(15, 185);
+            _btnCancel.Size = new Size(120, 35);
             
             // Assign legacy button references for compatibility
             btnCreateEnvironment = _btnNext;
             btnCancel = _btnCancel;
 
             var progressLabel = ModernControls.CreateStatusLabel("🚀 Setting up your development environment...", ModernUITheme.Colors.TextSecondary);
-            progressLabel.Location = new Point(150, 35);
+            progressLabel.Location = new Point(150, 195);
             progressLabel.Size = new Size(500, 20);
 
-            _navigationPanel.Controls.AddRange(new Control[] { _btnPrevious, _btnNext, _btnCancel, progressLabel });
+            _navigationPanel.Controls.AddRange(new Control[] { consoleLabel, rtbConfigConsole, _btnPrevious, _btnNext, _btnCancel, progressLabel });
             _mainPanel.Controls.AddRange(new Control[] { _headerPanel, _contentPanel, _navigationPanel });
             this.Controls.Add(_mainPanel);
 
@@ -967,6 +992,10 @@ namespace ScheduleIDevelopementEnvironementManager
             _currentStep = stepNumber;
             UpdateWizardHeader();
             
+            // Update console with step information
+            var stepInfo = GetStepInfo(stepNumber);
+            UpdateConfigConsole($"Navigating to Step {stepNumber}: {stepInfo.Title}");
+            
             switch (stepNumber)
             {
                 case 1:
@@ -1023,11 +1052,17 @@ namespace ScheduleIDevelopementEnvironementManager
             {
                 _btnNext.Text = "🚀 Create Environment";
                 _btnNext.BackColor = ModernUITheme.Colors.AccentSuccess;
+                _btnNext.Font = ModernUITheme.Typography.ButtonMedium; // Ensure consistent font
+                _btnNext.Size = new Size(140, 35); // Slightly wider for longer text
+                _btnNext.Location = new Point(805, 185); // Adjust position for wider button
             }
             else
             {
                 _btnNext.Text = "Next ➡️";
                 _btnNext.BackColor = ModernUITheme.Colors.AccentPrimary;
+                _btnNext.Font = ModernUITheme.Typography.ButtonMedium;
+                _btnNext.Size = new Size(120, 35);
+                _btnNext.Location = new Point(825, 185); // Original position
             }
             
             _btnNext.Enabled = ValidateCurrentStep();
@@ -1065,6 +1100,13 @@ namespace ScheduleIDevelopementEnvironementManager
             txtSteamLibrary.Location = new Point(35, 200);
             txtSteamLibrary.Size = new Size(720, 35);
             
+            // Update text box with detected Steam library if available
+            if (!string.IsNullOrEmpty(_config.SteamLibraryPath))
+            {
+                txtSteamLibrary.Text = _config.SteamLibraryPath;
+                txtSteamLibrary.ForeColor = ModernUITheme.Colors.TextPrimary;
+            }
+            
             btnBrowseSteamLibrary = ModernControls.CreateActionButton("📁 Browse", ModernUITheme.ButtonStyle.Secondary);
             btnBrowseSteamLibrary.Location = new Point(765, 200);
             btnBrowseSteamLibrary.Size = new Size(100, 35);
@@ -1072,6 +1114,23 @@ namespace ScheduleIDevelopementEnvironementManager
             lblStatus = ModernControls.CreateStatusLabel("🔍 Scanning for Steam installations...", ModernUITheme.Colors.AccentInfo);
             lblStatus.Location = new Point(35, 250);
             lblStatus.Size = new Size(850, 25);
+            
+            // Update status based on detection results
+            if (!string.IsNullOrEmpty(_config.SteamLibraryPath))
+            {
+                if (!string.IsNullOrEmpty(_config.GameInstallPath))
+                {
+                    UpdateStatusWithConsole("✅ Steam library and Schedule I game detected successfully", StatusType.Success);
+                }
+                else
+                {
+                    UpdateStatusWithConsole("⚠️ Steam library found, but Schedule I game not detected", StatusType.Warning);
+                }
+            }
+            else
+            {
+                UpdateStatusWithConsole("❌ No Steam libraries found", StatusType.Error);
+            }
 
             _contentPanel?.Controls.AddRange(new Control[] {
                 contentCard, lblSteamLibrary, txtSteamLibrary, btnBrowseSteamLibrary, lblStatus
@@ -1146,25 +1205,25 @@ namespace ScheduleIDevelopementEnvironementManager
             contentCard.Size = new Size(880, 120);
             contentCard.Location = new Point(35, 20);
 
-            var lblBranches = ModernControls.CreateFieldLabel("Select Branches to Manage:");
+            var lblBranches = ModernControls.CreateFieldLabel("Select which branches to manage:");
             lblBranches.Location = new Point(35, 160);
-            lblBranches.Size = new Size(300, 25);
+            lblBranches.Size = new Size(400, 25);
 
-            chkMainBranch = ModernControls.CreateModernCheckBox("🌟 Main Branch (Stable)");
+            chkMainBranch = ModernControls.CreateModernCheckBox("📁 Main Branch (Stable)");
             chkMainBranch.Location = new Point(50, 195);
-            chkMainBranch.Size = new Size(400, 35);
+            chkMainBranch.Size = new Size(400, 32);
 
-            chkBetaBranch = ModernControls.CreateModernCheckBox("🧪 Beta Branch (Testing)");
-            chkBetaBranch.Location = new Point(50, 240);
-            chkBetaBranch.Size = new Size(400, 35);
+            chkBetaBranch = ModernControls.CreateModernCheckBox("🎮 Beta Branch (Testing)");
+            chkBetaBranch.Location = new Point(50, 235);
+            chkBetaBranch.Size = new Size(400, 32);
 
-            chkAlternateBranch = ModernControls.CreateModernCheckBox("🔄 Alternate Branch");
-            chkAlternateBranch.Location = new Point(50, 285);
-            chkAlternateBranch.Size = new Size(400, 35);
+            chkAlternateBranch = ModernControls.CreateModernCheckBox("📊 Alternate Branch");
+            chkAlternateBranch.Location = new Point(50, 275);
+            chkAlternateBranch.Size = new Size(400, 32);
 
-            chkAlternateBetaBranch = ModernControls.CreateModernCheckBox("🔬 Alternate Beta Branch");
-            chkAlternateBetaBranch.Location = new Point(50, 330);
-            chkAlternateBetaBranch.Size = new Size(400, 35);
+            chkAlternateBetaBranch = ModernControls.CreateModernCheckBox("🌿 Alternate Beta Branch");
+            chkAlternateBetaBranch.Location = new Point(50, 315);
+            chkAlternateBetaBranch.Size = new Size(400, 32);
 
             _contentPanel?.Controls.AddRange(new Control[] {
                 contentCard, lblBranches, chkMainBranch, chkBetaBranch, chkAlternateBranch, chkAlternateBetaBranch
@@ -1196,11 +1255,13 @@ namespace ScheduleIDevelopementEnvironementManager
             {
                 FormDiagnostics.StartPerformanceTracking("LoadSteamInformation");
                 _logger.LogInformation("Loading Steam information...");
+                UpdateConfigConsole("Starting Steam library detection...");
 
                 var steamLibraries = _steamService.GetSteamLibraryPaths();
                 if (steamLibraries.Count > 0)
                 {
                     _config.SteamLibraryPath = steamLibraries[0];
+                    UpdateConfigConsole($"Found Steam library: {_config.SteamLibraryPath}");
                     
                     _availableGames = _steamService.GetSteamGames(_config.SteamLibraryPath);
                     var scheduleIGame = _availableGames.FirstOrDefault(g => g.AppId == "3164500");
@@ -1209,22 +1270,28 @@ namespace ScheduleIDevelopementEnvironementManager
                     {
                         _config.GameInstallPath = scheduleIGame.InstallPath;
                         _logger.LogInformation("Schedule I game found at: {Path}", _config.GameInstallPath);
+                        UpdateConfigConsole($"Schedule I found at: {_config.GameInstallPath}");
                         
                         var (detectedBranch, buildId) = _steamService.GetBranchAndBuildIdFromManifest(_config.GameInstallPath);
                         if (!string.IsNullOrEmpty(detectedBranch))
                         {
                             _config.InstalledBranch = detectedBranch;
                             _config.SetBuildIdForBranch(detectedBranch, buildId ?? "");
+                            UpdateConfigConsole($"Detected branch: {detectedBranch}, Build ID: {buildId ?? "Unknown"}");
                         }
+                        
+                        UpdateStatusWithConsole("Steam library and game detected successfully", StatusType.Success);
                     }
                     else
                     {
                         _logger.LogWarning("Schedule I game not found in selected Steam library");
+                        UpdateStatusWithConsole("Schedule I game not found in selected Steam library", StatusType.Warning);
                     }
                 }
                 else
                 {
                     _logger.LogWarning("No Steam libraries found");
+                    UpdateStatusWithConsole("No Steam libraries found", StatusType.Error);
                 }
 
                 FormDiagnostics.EndPerformanceTracking("LoadSteamInformation");
@@ -1232,10 +1299,60 @@ namespace ScheduleIDevelopementEnvironementManager
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading Steam information");
+                UpdateStatusWithConsole($"Error loading Steam information: {ex.Message}", StatusType.Error);
                 FormDiagnostics.EndPerformanceTracking("LoadSteamInformation");
             }
         }
 
+
+        /// <summary>
+        /// Updates the configuration console with a new message
+        /// </summary>
+        private void UpdateConfigConsole(string message, bool isError = false)
+        {
+            if (rtbConfigConsole == null) return;
+            
+            var timestamp = DateTime.Now.ToString("HH:mm:ss");
+            var formattedMessage = $"[{timestamp}] {message}\n";
+            
+            rtbConfigConsole.AppendText(formattedMessage);
+            
+            // Auto-scroll to bottom
+            rtbConfigConsole.SelectionStart = rtbConfigConsole.Text.Length;
+            rtbConfigConsole.ScrollToCaret();
+        }
+        
+        /// <summary>
+        /// Updates status with improved color visibility
+        /// </summary>
+        private void UpdateStatusWithConsole(string message, StatusType statusType = StatusType.Info)
+        {
+            if (lblStatus != null)
+            {
+                lblStatus.Text = message;
+                
+                // Use high contrast colors for better visibility on dark background
+                lblStatus.ForeColor = statusType switch
+                {
+                    StatusType.Success => Color.FromArgb(144, 238, 144), // Light green
+                    StatusType.Warning => Color.FromArgb(255, 215, 0),   // Gold  
+                    StatusType.Error => Color.FromArgb(255, 99, 99),     // Light red
+                    StatusType.Info => Color.FromArgb(173, 216, 230),    // Light blue
+                    _ => ModernUITheme.Colors.TextPrimary
+                };
+            }
+            
+            // Also log to console
+            UpdateConfigConsole(message, statusType == StatusType.Error);
+        }
+        
+        private enum StatusType
+        {
+            Info,
+            Success,
+            Warning,
+            Error
+        }
 
         #endregion
     }

@@ -77,7 +77,7 @@ namespace ScheduleIDevelopementEnvironementManager.UI
                 Font = large ? ModernUITheme.Typography.HeadingLarge : ModernUITheme.Typography.HeadingMedium,
                 ForeColor = ModernUITheme.Colors.TextPrimary,
                 BackColor = Color.Transparent,
-                AutoSize = false
+                AutoSize = true
             };
         }
         
@@ -92,7 +92,7 @@ namespace ScheduleIDevelopementEnvironementManager.UI
                 Font = ModernUITheme.Typography.BodyMedium,
                 ForeColor = ModernUITheme.Colors.TextPrimary,
                 BackColor = Color.Transparent,
-                AutoSize = false
+                AutoSize = true
             };
         }
         
@@ -107,7 +107,7 @@ namespace ScheduleIDevelopementEnvironementManager.UI
                 Font = ModernUITheme.Typography.BodySmall,
                 ForeColor = foreColor ?? ModernUITheme.Colors.TextSecondary,
                 BackColor = Color.Transparent,
-                AutoSize = false
+                AutoSize = true
             };
         }
         
@@ -146,7 +146,8 @@ namespace ScheduleIDevelopementEnvironementManager.UI
                 ForeColor = ModernUITheme.Colors.TextPrimary,
                 BackColor = Color.Transparent,
                 Checked = isChecked,
-                UseVisualStyleBackColor = false
+                UseVisualStyleBackColor = false,
+                AutoSize = true
             };
         }
         
@@ -185,7 +186,7 @@ namespace ScheduleIDevelopementEnvironementManager.UI
             };
             
             var titleLabel = CreateHeadingLabel(title, false);
-            titleLabel.Location = new Point(15, 12);
+            titleLabel.Location = new Point(15, 5);
             titleLabel.ForeColor = ModernUITheme.Colors.AccentPrimary;
             card.Controls.Add(titleLabel);
             
@@ -198,7 +199,7 @@ namespace ScheduleIDevelopementEnvironementManager.UI
                     ForeColor = ModernUITheme.Colors.TextSecondary,
                     BackColor = Color.Transparent,
                     Location = new Point(15, 35),
-                    AutoSize = false
+                    AutoSize = true
                 };
                 card.Controls.Add(contentLabel);
             }

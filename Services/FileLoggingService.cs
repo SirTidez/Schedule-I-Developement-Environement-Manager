@@ -8,16 +8,36 @@ namespace ScheduleIDevelopementEnvironementManager.Services
     /// </summary>
     public class FileLoggingService : ILogger
     {
-        private readonly string _logDirectory;
-        private readonly string _logFilePath;
+        private string _logDirectory;
+        private string _logFilePath = string.Empty;
         private readonly object _lockObject = new object();
 
         public FileLoggingService()
         {
-            // Set up logging directory in AppData\LocalLow\TVGS\Schedule I\Developer Env\logs
+            // Initially use AppData as fallback - will be updated when managed environment is set
             var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             _logDirectory = Path.Combine(appDataPath, "Schedule I Developer Env", "logs");
 
+            UpdateLogFilePath();
+        }
+
+        /// <summary>
+        /// Sets the managed environment path for log storage
+        /// </summary>
+        public void SetManagedEnvironmentPath(string managedEnvironmentPath)
+        {
+            if (!string.IsNullOrEmpty(managedEnvironmentPath))
+            {
+                _logDirectory = Path.Combine(managedEnvironmentPath, "logs");
+                UpdateLogFilePath();
+            }
+        }
+
+        /// <summary>
+        /// Updates the log file path and ensures directory exists
+        /// </summary>
+        private void UpdateLogFilePath()
+        {
             // Create log filename with format {dd-mm-yy} {hh:mm}.log
             var now = DateTime.Now;
             var logFileName = $"{now:dd-MM-yy} {now:HH-mm}.log";
@@ -105,6 +125,21 @@ namespace ScheduleIDevelopementEnvironementManager.Services
     {
         private readonly List<FileLoggingService> _loggers = new List<FileLoggingService>();
         private bool _disposed = false;
+        private string? _managedEnvironmentPath;
+
+        /// <summary>
+        /// Sets the managed environment path for all new loggers
+        /// </summary>
+        public void SetManagedEnvironmentPath(string managedEnvironmentPath)
+        {
+            _managedEnvironmentPath = managedEnvironmentPath;
+            
+            // Update existing loggers
+            foreach (var logger in _loggers)
+            {
+                logger.SetManagedEnvironmentPath(managedEnvironmentPath);
+            }
+        }
 
         public void AddProvider(ILoggerProvider provider)
         {
@@ -114,6 +149,13 @@ namespace ScheduleIDevelopementEnvironementManager.Services
         public ILogger CreateLogger(string categoryName)
         {
             var logger = new FileLoggingService();
+            
+            // Apply managed environment path if set
+            if (!string.IsNullOrEmpty(_managedEnvironmentPath))
+            {
+                logger.SetManagedEnvironmentPath(_managedEnvironmentPath);
+            }
+            
             _loggers.Add(logger);
             return logger;
         }

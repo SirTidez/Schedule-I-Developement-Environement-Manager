@@ -11,21 +11,35 @@ namespace ScheduleIDevelopementEnvironementManager.Services
     public class ConfigurationService
     {
         private readonly ILogger<ConfigurationService> _logger;
-        private readonly string _configDirectory;
-        private readonly string _configFilePath;
-        private const string ConfigFileName = "dev_environment_config.json";
+        private string _configDirectory;
+        private string _configFilePath;
+        private const string ConfigFileName = "config.json";
 
         public ConfigurationService(ILogger<ConfigurationService> logger)
         {
             _logger = logger;
             
-            // Set up configuration directory in AppData\Local\Schedule I Developer Env\config
+            // Initially use AppData as fallback - will be updated when managed environment is set
             var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             _configDirectory = Path.Combine(appDataPath, "Schedule I Developer Env", "config");
-            _configFilePath = Path.Combine(_configDirectory, ConfigFileName);
+            _configFilePath = Path.Combine(_configDirectory, "dev_environment_config.json");
             
-            _logger.LogInformation("Configuration directory: {ConfigDir}", _configDirectory);
-            _logger.LogInformation("Configuration file: {ConfigFile}", _configFilePath);
+            _logger.LogInformation("Configuration service initialized with fallback directory: {ConfigDir}", _configDirectory);
+        }
+
+        /// <summary>
+        /// Sets the managed environment path for config and log storage
+        /// </summary>
+        public void SetManagedEnvironmentPath(string managedEnvironmentPath)
+        {
+            if (!string.IsNullOrEmpty(managedEnvironmentPath))
+            {
+                _configDirectory = managedEnvironmentPath;
+                _configFilePath = Path.Combine(_configDirectory, ConfigFileName);
+                
+                _logger.LogInformation("Configuration path updated to managed environment: {ConfigDir}", _configDirectory);
+                _logger.LogInformation("Configuration file: {ConfigFile}", _configFilePath);
+            }
         }
 
         /// <summary>

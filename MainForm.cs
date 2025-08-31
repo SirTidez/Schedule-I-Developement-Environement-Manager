@@ -1523,16 +1523,18 @@ namespace ScheduleIDevelopementEnvironementManager
 
             // Status and Actions Card - improved size and spacing
             var statusCard = ModernControls.CreateInfoCard("📊 Status & Actions", "");
-            statusCard.Size = new Size(920, 140);  // Larger for better button and text spacing
+            statusCard.Size = new Size(920, 300);  // Larger for better button and text spacing
             statusCard.Location = new Point(15, 540);
 
             lblStatus = ModernControls.CreateStatusLabel("🔄 Loading configuration...", ModernUITheme.Colors.AccentInfo);
-            lblStatus.Location = new Point(15, 45);
+            lblStatus.Location = new Point(250, 45);
             lblStatus.Size = new Size(450, 30);  // Wider and taller for better text display
+            lblStatus.BorderStyle = BorderStyle.None;
+            lblStatus.BackColor = Color.Transparent;
 
             txtConfigInfo = new RichTextBox();
             txtConfigInfo.Location = new Point(15, 80);
-            txtConfigInfo.Size = new Size(450, 45);  // Wider and taller
+            txtConfigInfo.Size = new Size(600, 100);  // Wider and taller
             txtConfigInfo.ReadOnly = true;
             txtConfigInfo.BackColor = ModernUITheme.Colors.LogBackground;
             txtConfigInfo.ForeColor = ModernUITheme.Colors.TextSecondary;
@@ -1540,16 +1542,16 @@ namespace ScheduleIDevelopementEnvironementManager
             txtConfigInfo.BorderStyle = BorderStyle.None;
 
             btnCreateEnvironment = ModernControls.CreateActionButton("🚀 Create Environment", ModernUITheme.ButtonStyle.Success);
-            btnCreateEnvironment.Location = new Point(485, 45);  // Better spacing from text area
-            btnCreateEnvironment.Size = new Size(180, 45);  // Larger button
+            btnCreateEnvironment.Location = new Point(650, 80);  // Better spacing from text area
+            btnCreateEnvironment.Size = new Size(215, 45);  // Larger button
             btnCreateEnvironment.Enabled = false;
 
             btnRefresh = ModernControls.CreateActionButton("🔄 Refresh", ModernUITheme.ButtonStyle.Info);
-            btnRefresh.Location = new Point(680, 45);  // 15px spacing between buttons
+            btnRefresh.Location = new Point(650, 135);  // 15px spacing between buttons
             btnRefresh.Size = new Size(110, 45);
 
             btnExit = ModernControls.CreateActionButton("❌ Exit", ModernUITheme.ButtonStyle.Danger);
-            btnExit.Location = new Point(805, 45);  // Aligned with other buttons
+            btnExit.Location = new Point(775, 135);  // Aligned with other buttons
             btnExit.Size = new Size(90, 45);       // Larger and aligned height
 
             progressBar = new ProgressBar();

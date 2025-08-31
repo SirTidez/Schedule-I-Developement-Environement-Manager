@@ -79,6 +79,13 @@ namespace ScheduleIDevelopementEnvironementManager
             var serviceProvider = services.BuildServiceProvider();
             _steamService = serviceProvider.GetRequiredService<SteamService>();
             _configService = serviceProvider.GetRequiredService<ConfigurationService>();
+            
+            // Set managed environment path for config and logging
+            if (!string.IsNullOrEmpty(config.ManagedEnvironmentPath))
+            {
+                fileLoggingFactory.SetManagedEnvironmentPath(config.ManagedEnvironmentPath);
+                _configService.SetManagedEnvironmentPath(config.ManagedEnvironmentPath);
+            }
             _fileOperationsService = serviceProvider.GetRequiredService<FileOperationsService>();
             _branchManagementService = serviceProvider.GetRequiredService<BranchManagementService>();
             _logger = serviceProvider.GetRequiredService<ILogger<ManagedEnvironmentLoadedForm>>();
@@ -350,8 +357,8 @@ namespace ScheduleIDevelopementEnvironementManager
         {
             pnlBranchDetails = new Panel
             {
-                Location = new Point(1260, 120),
-                Size = new Size(320, 380),
+                Location = new Point(1270, 120),
+                Size = new Size(300, 380),
                 BackColor = BackgroundMedium,
                 BorderStyle = BorderStyle.FixedSingle
             };
@@ -360,7 +367,7 @@ namespace ScheduleIDevelopementEnvironementManager
             {
                 Text = "Branch Details",
                 Location = new Point(10, 10),
-                Size = new Size(300, 25),
+                Size = new Size(280, 25),
                 Font = new Font("Segoe UI", 10, FontStyle.Bold),
                 ForeColor = TextPrimary,
                 BackColor = Color.Transparent
@@ -369,7 +376,7 @@ namespace ScheduleIDevelopementEnvironementManager
             rtbBranchInfo = new RichTextBox
             {
                 Location = new Point(10, 40),
-                Size = new Size(300, 330),
+                Size = new Size(280, 330),
                 BackColor = BackgroundDark,
                 ForeColor = TextPrimary,
                 BorderStyle = BorderStyle.None,
@@ -783,8 +790,95 @@ namespace ScheduleIDevelopementEnvironementManager
 
         private void BtnSettings_Click(object? sender, EventArgs e)
         {
-            MessageBox.Show("Settings functionality will be implemented in a future update.", 
-                "Coming Soon", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            ShowSettingsDialog();
+        }
+
+        /// <summary>
+        /// Shows the settings dialog with configuration management options
+        /// </summary>
+        private void ShowSettingsDialog()
+        {
+            var result = MessageBox.Show(
+                "Settings Options:\n\n" +
+                "Do you want to delete the current configuration?\n\n" +
+                "⚠️ WARNING: This will remove the configuration file but keep all managed environment instances intact.\n" +
+                "You will need to reconfigure the application after deletion.\n\n" +
+                "Click 'Yes' to delete configuration\n" +
+                "Click 'No' to cancel",
+                "⚙️ Settings - Delete Configuration", 
+                MessageBoxButtons.YesNo, 
+                MessageBoxIcon.Warning);
+
+            if (result == DialogResult.Yes)
+            {
+                DeleteConfiguration();
+            }
+        }
+
+        /// <summary>
+        /// Deletes the current configuration file and handles cleanup
+        /// </summary>
+        private void DeleteConfiguration()
+        {
+            try
+            {
+                _logger.LogInformation("User initiated configuration deletion");
+
+                // Get the current config file path
+                var configFilePath = _configService.GetConfigFilePath();
+                
+                if (!File.Exists(configFilePath))
+                {
+                    _logger.LogWarning("Configuration file not found: {ConfigPath}", configFilePath);
+                    MessageBox.Show("Configuration file not found.", "Information", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // Show final confirmation
+                var finalConfirmResult = MessageBox.Show(
+                    $"Are you absolutely sure you want to delete the configuration?\n\n" +
+                    $"File to be deleted:\n{configFilePath}\n\n" +
+                    $"This action cannot be undone!\n\n" +
+                    $"Managed environment instances will remain intact.",
+                    "⚠️ Final Confirmation - Delete Configuration", 
+                    MessageBoxButtons.YesNo, 
+                    MessageBoxIcon.Error);
+
+                if (finalConfirmResult != DialogResult.Yes)
+                {
+                    _logger.LogInformation("Configuration deletion cancelled by user");
+                    return;
+                }
+
+                // Delete the configuration file
+                File.Delete(configFilePath);
+                _logger.LogInformation("Configuration file deleted successfully: {ConfigPath}", configFilePath);
+
+                // Show success message
+                MessageBox.Show(
+                    "Configuration deleted successfully!\n\n" +
+                    "The application will now exit. Next time you run the application, " +
+                    "you'll go through the initial setup process again.\n\n" +
+                    "Your managed environment instances remain intact.",
+                    "✅ Configuration Deleted", 
+                    MessageBoxButtons.OK, 
+                    MessageBoxIcon.Information);
+
+                // Close the application since we no longer have a valid configuration
+                _logger.LogInformation("Closing application after configuration deletion");
+                Application.Exit();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting configuration file");
+                MessageBox.Show(
+                    $"Error deleting configuration file:\n\n{ex.Message}\n\n" +
+                    "Please try again or delete the file manually.",
+                    "❌ Error", 
+                    MessageBoxButtons.OK, 
+                    MessageBoxIcon.Error);
+            }
         }
 
         private void BtnExport_Click(object? sender, EventArgs e)
@@ -842,9 +936,9 @@ namespace ScheduleIDevelopementEnvironementManager
             }
         }
 
-        private async Task LaunchWithCustomCommandAsync()
+        private Task LaunchWithCustomCommandAsync()
         {
-            if (_selectedBranch == null || !_selectedBranch.IsInstalled) return;
+            if (_selectedBranch == null || !_selectedBranch.IsInstalled) return Task.CompletedTask;
 
             try
             {
@@ -853,7 +947,7 @@ namespace ScheduleIDevelopementEnvironementManager
                 {
                     MessageBox.Show("No custom launch command is set for this branch.", "Custom Launch", 
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    return;
+                    return Task.CompletedTask;
                 }
 
                 UpdateStatus($"Launching {_selectedBranch.DisplayName} with custom command...");
@@ -862,6 +956,7 @@ namespace ScheduleIDevelopementEnvironementManager
 
                 CustomLaunchCommandDialog.ExecuteCommand(customCommand);
                 UpdateStatus($"Custom launch command executed for {_selectedBranch.DisplayName}");
+                return Task.CompletedTask;
             }
             catch (Exception ex)
             {
@@ -869,6 +964,7 @@ namespace ScheduleIDevelopementEnvironementManager
                 UpdateStatus($"Error executing custom command for {_selectedBranch.DisplayName}");
                 MessageBox.Show($"Error executing custom launch command: {ex.Message}",
                     "Custom Launch Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return Task.CompletedTask;
             }
         }
 
